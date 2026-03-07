@@ -5,10 +5,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeView;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTreeCell;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
@@ -73,7 +70,21 @@ public class MainController {
     //程序启动后初始化
     @FXML
     public void initialize() {
-        dirTreeView.setCellFactory(TextFieldTreeCell.forTreeView());//基础单元格样式
+        //自定义CellFactory，让点击节点文本也能触发展开/折叠
+        dirTreeView.setCellFactory(tv -> {
+            TreeCell<String> cell = new TextFieldTreeCell<>();
+            //点击节点文本也能触发展开/折叠
+            cell.setOnMouseClicked(event -> {
+                if(event.getClickCount() == 1 && cell.getTreeItem() != null){
+                    TreeItem<String> item = cell.getTreeItem();
+                    //仅切换非根节点(避免点击"我的电脑"触发展开)
+                    if(!item.getValue().equals("我的电脑")){
+                        item.setExpanded(!item.isExpanded());
+                    }
+                }
+            });
+            return cell;
+        });
         dirTreeView.setPrefWidth(250); // 固定目录树宽度，避免布局抖动
 
         //选中目录触发图片加载
@@ -157,7 +168,7 @@ public class MainController {
 
             //盘符展开是加载子目录
             driveItem.expandedProperty().addListener((obs, oldVal, newVal) -> {
-                if(newVal && STATUS_UNLOADED.equals(treeItemStatus.get(driveItem))){
+                if (newVal && STATUS_UNLOADED.equals(treeItemStatus.get(driveItem))) {
                     loadChildrenAsync(driveItem, root, 1);
                 }
             });
@@ -180,12 +191,12 @@ public class MainController {
             return;
         }
 
-        //添加加载占位符
-        TreeItem<String> loadingItem = new TreeItem<>("加载中...");
-        Platform.runLater(() -> parentItem.getChildren().add(loadingItem));
+        System.out.println("正在加载目录：" + parentFile.getAbsolutePath());
 
-        //强制设置为展开状态（避免点击后收起）
-        parentItem.setExpanded(true);
+        //仅在首次触发时设置展开，避免重复修改
+        if (!parentItem.isExpanded()) {
+            parentItem.setExpanded(true);
+        }
 
         //后台线程读取目录
         dirExecutor.submit(() -> {
@@ -194,10 +205,8 @@ public class MainController {
                 childFiles = new File[0];//权限不足时返回空数组
                 System.out.println("❌ 读取目录失败（权限不足）：" + parentFile.getAbsolutePath());
                 Platform.runLater(() -> {
-                    parentItem.getChildren().remove(loadingItem);
                     TreeItem<String> emptyItem = new TreeItem<>("无访问权限");
                     parentItem.getChildren().add(emptyItem);
-                    parentItem.setExpanded(true); // 强制保持展开
                 });
                 treeItemStatus.put(parentItem, STATUS_LOADED);
                 return;
@@ -223,9 +232,6 @@ public class MainController {
 
             //UI线程更新目录树
             Platform.runLater(() -> {
-                // 移除“加载中...”占位符
-                parentItem.getChildren().remove(loadingItem);
-
                 // 空目录时显示“无子目录”提示，避免空白
                 if (filteredFiles.isEmpty()) {
                     TreeItem<String> emptyItem = new TreeItem<>("无子目录");
@@ -238,8 +244,7 @@ public class MainController {
                         treeItemStatus.put(childItem, STATUS_UNLOADED);
                         // 子节点展开监听
                         childItem.expandedProperty().addListener((obs, oldVal, newVal) -> {
-                            if (newVal && childItem.getChildren().isEmpty()) {
-                                childItem.setExpanded(true);
+                            if (newVal && STATUS_UNLOADED.equals(treeItemStatus.get(childItem))) {
                                 loadChildrenAsync(childItem, childFile, depth + 1);
                             }
                         });
@@ -247,7 +252,6 @@ public class MainController {
                     }
                 }
                 // 加载完成后再次确认展开状态
-                parentItem.setExpanded(true);
                 treeItemStatus.put(parentItem, STATUS_LOADED); // 标记为已加载
             });
         });
