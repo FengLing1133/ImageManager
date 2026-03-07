@@ -33,6 +33,17 @@ public class MainController {
     @FXML
     private FlowPane imageFlowPane;
 
+    private int currentPage = 0;
+    private final int PAGE_SIZE = 50;//每页加载50张图片
+    private File currentDir;//记录当前选中的目录
+
+    //目录节点加载状态缓存
+    private final Map<TreeItem<String>, String> treeItemStatus = new HashMap<>();
+    // 状态常量
+    private static final String STATUS_UNLOADED = "unloaded";   // 未加载
+    private static final String STATUS_LOADING = "loading";     // 加载中
+    private static final String STATUS_LOADED = "loaded";       // 已加载
+
     //目录加载线程池
     private final ExecutorService dirExecutor = Executors.newFixedThreadPool(2, runnable -> {
         Thread thread = new Thread(runnable);
@@ -52,15 +63,12 @@ public class MainController {
     //图片缓存(LRU策略，最多缓存200张，避免重复加载)
     private final Map<String, Image> imageCache = Collections.synchronizedMap(
             new LinkedHashMap<>(100, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Image> eldest) {
-            return size() > 200;
-        }
-    });
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Image> eldest) {
+                    return size() > 200;
+                }
+            });
 
-    private int currentPage = 0;
-    private final int PAGE_SIZE = 50;//每页加载50张图片
-    private File currentDir;//记录当前选中的目录
 
     //程序启动后初始化
     @FXML
@@ -77,7 +85,7 @@ public class MainController {
                 if (selectedDir != null && selectedDir.isDirectory()) {
                     currentDir = selectedDir;
                     currentPage = 0;
-                    loadImagesToFlowPane(selectedDir,currentPage);
+                    loadImagesToFlowPane(selectedDir, currentPage);
                 }
             }
         });
@@ -89,7 +97,7 @@ public class MainController {
             boolean isAtBottom = event.getTotalDeltaY() >= imageFlowPane.getHeight() - 100;
             if (isAtBottom) {
                 currentPage++;
-                loadImagesToFlowPane(currentDir,currentPage);//加载下一页图片
+                loadImagesToFlowPane(currentDir, currentPage);//加载下一页图片
             }
         });
 
@@ -137,17 +145,19 @@ public class MainController {
 
         // 获取所有磁盘盘符（C:\、D:\、E:\等）
         File[] roots = File.listRoots();
-        if(roots == null) roots = new File[0];
+        if (roots == null) roots = new File[0];
 
         //为每个盘符创建节点
-        for(File root : roots){
+        for (File root : roots) {
             TreeItem<String> driveItem = new TreeItem<>(root.getAbsolutePath());
             driveItem.setExpanded(false);//盘符默认关闭，避免一次性加载系统目录
+            //初始化状态：未加载
+            treeItemStatus.put(driveItem, STATUS_UNLOADED);
             computerRoot.getChildren().add(driveItem);
 
             //盘符展开是加载子目录
             driveItem.expandedProperty().addListener((obs, oldVal, newVal) -> {
-                if(newVal && driveItem.getChildren().isEmpty()){
+                if(newVal && STATUS_UNLOADED.equals(treeItemStatus.get(driveItem))){
                     loadChildrenAsync(driveItem, root, 1);
                 }
             });
@@ -156,15 +166,17 @@ public class MainController {
 
     //异步加载子目录
     private void loadChildrenAsync(TreeItem<String> parentItem, File parentFile, int depth) {
-        // 防重复加载锁（核心：避免多次点击触发重复任务）
-        AtomicBoolean isLoading = new AtomicBoolean(false);//默认未加载
-        if(isLoading.get() || !parentItem.getChildren().isEmpty()){
+        //校验状态：已加载/加载中则直接返回
+        String status = treeItemStatus.getOrDefault(parentItem, STATUS_UNLOADED);
+        if (STATUS_LOADING.equals(status) || STATUS_LOADED.equals(status)) {
             return;
         }
-        isLoading.set(true);
 
-        if (depth > 5) {// 最多加载6级目录，避免无限递归
-            isLoading.set(false);
+        //标记为加载中
+        treeItemStatus.put(parentItem, STATUS_LOADING);
+
+        if (depth > 5) {
+            treeItemStatus.put(parentItem, STATUS_LOADED);
             return;
         }
 
@@ -181,18 +193,17 @@ public class MainController {
             if (childFiles == null) {
                 childFiles = new File[0];//权限不足时返回空数组
                 System.out.println("❌ 读取目录失败（权限不足）：" + parentFile.getAbsolutePath());
-                // ========== 修复1：空目录/权限不足时，显示“无访问权限”提示 ==========
                 Platform.runLater(() -> {
                     parentItem.getChildren().remove(loadingItem);
                     TreeItem<String> emptyItem = new TreeItem<>("无访问权限");
                     parentItem.getChildren().add(emptyItem);
                     parentItem.setExpanded(true); // 强制保持展开
                 });
-                isLoading.set(false);
+                treeItemStatus.put(parentItem, STATUS_LOADED);
                 return;
             }
 
-            //过滤系统敏感目录、隐藏目录
+            //过滤掉系统目录
             List<File> filteredFiles = Arrays.stream(childFiles)
                     .filter(file -> {
                         String name = file.getName();
@@ -223,6 +234,9 @@ public class MainController {
                     // 正常加载子目录（保留原有逻辑）
                     for (File childFile : filteredFiles) {
                         TreeItem<String> childItem = new TreeItem<>(childFile.getName());
+                        // 初始化子节点状态为未加载
+                        treeItemStatus.put(childItem, STATUS_UNLOADED);
+                        // 子节点展开监听
                         childItem.expandedProperty().addListener((obs, oldVal, newVal) -> {
                             if (newVal && childItem.getChildren().isEmpty()) {
                                 childItem.setExpanded(true);
@@ -234,7 +248,7 @@ public class MainController {
                 }
                 // 加载完成后再次确认展开状态
                 parentItem.setExpanded(true);
-                isLoading.set(false);
+                treeItemStatus.put(parentItem, STATUS_LOADED); // 标记为已加载
             });
         });
     }
@@ -242,8 +256,7 @@ public class MainController {
     //递归拼接TreeItem的完整路径
     private String getFullPath(TreeItem<String> item) {
         //根节点是“我的电脑”,跳过
-        if(item.getParent() == null || item.getParent().getValue().equals("我的电脑"))
-        {
+        if (item.getParent() == null || item.getParent().getValue().equals("我的电脑")) {
             return item.getValue();//盘符直接返回
         }
         // 递归拼接：父路径 + 系统分隔符 + 当前目录名
@@ -253,24 +266,24 @@ public class MainController {
 
     //异步加载单张图片(带缓存)
     private void loadImageAsync(File file, Consumer<ImageView> callback) {
-        imageExecutor.submit(() ->{
-            try{
+        imageExecutor.submit(() -> {
+            try {
                 String filePath = file.getAbsolutePath();
                 Image image;
                 //优先从缓存读取，避免重复解码
-                if(imageCache.containsKey(filePath)){
+                if (imageCache.containsKey(filePath)) {
                     image = imageCache.get(filePath);
-                }else{
+                } else {
                     //异步加载缩略图
-                    image = new Image(file.toURI().toString(), 150, 150, true, true,true);
+                    image = new Image(file.toURI().toString(), 150, 150, true, true, true);
                     imageCache.put(filePath, image);
                 }
                 //构建ImageView
                 ImageView imageView = new ImageView(image);
                 imageView.setFitWidth(150);
                 imageView.setFitHeight(150);
-                imageView.setPreserveRatio( true);
-                imageView.setSmooth( true);//抗锯齿，优化图片质量
+                imageView.setPreserveRatio(true);
+                imageView.setSmooth(true);//抗锯齿，优化图片质量
 
                 // 选中样式
                 imageView.setOnMouseClicked(event -> {
@@ -280,14 +293,14 @@ public class MainController {
                     });
                 });
                 callback.accept(imageView);
-            }catch (Exception e){
+            } catch (Exception e) {
                 System.out.println("⚠️ 图片加载失败：" + file.getName());
             }
         });
     }
 
     // 分页加载图片到FlowPane
-    private void loadImagesToFlowPane(File dir,int page) {
+    private void loadImagesToFlowPane(File dir, int page) {
         //第一页清空原有内容，后续页追加
         if (page == 0) {
             Platform.runLater(() -> imageFlowPane.getChildren().clear());
@@ -318,14 +331,14 @@ public class MainController {
 
         //分页计算
         int start = page * PAGE_SIZE;
-        if(start >= imageFiles.size()){
+        if (start >= imageFiles.size()) {
             return;//没有更多图片
         }
         int end = Math.min(start + PAGE_SIZE, imageFiles.size());
         List<File> pageFiles = imageFiles.subList(start, end);
 
         //异步加载当前页图片
-        for(File file : pageFiles){
+        for (File file : pageFiles) {
             loadImageAsync(file, imageView -> {
                 Platform.runLater(() -> {
                     FlowPane.setMargin(imageView, new Insets(5));
@@ -344,6 +357,7 @@ public class MainController {
             });
         }
     }
+
     //关闭所有线程池
     public void shutdown() {
         dirExecutor.shutdown();
