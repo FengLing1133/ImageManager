@@ -1,17 +1,35 @@
 package com.imanager;
 
+import com.imanager.controller.MainController;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 public class MainApplication extends Application {
+
+    // 全局保存FXMLLoader实例，避免重复创建
+    private FXMLLoader fxmlLoader;
     @Override
     public void start(Stage primaryStage) throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/main.fxml"));
+        // 1. 初始化FXMLLoader并保存到全局
+        fxmlLoader = new FXMLLoader(getClass().getResource("/main.fxml"));
         primaryStage.setTitle("图片管理器");
-        primaryStage.setScene(new Scene(loader.load()));
+        primaryStage.setScene(new Scene(fxmlLoader.load()));
         primaryStage.show();
+
+    }
+
+    @Override
+    public void stop() throws Exception {
+        super.stop();
+        if (fxmlLoader != null) {
+            MainController controller = fxmlLoader.getController();
+            if (controller != null) {
+                controller.shutdown(); // 关闭线程池
+            }
+        }
     }
 
     public static void main(String[] args) {
