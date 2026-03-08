@@ -11,6 +11,7 @@ public class MainApplication extends Application {
 
     // 全局保存FXMLLoader实例，避免重复创建
     private FXMLLoader fxmlLoader;
+
     @Override
     public void start(Stage primaryStage) throws Exception {
         // 1. 初始化FXMLLoader并保存到全局

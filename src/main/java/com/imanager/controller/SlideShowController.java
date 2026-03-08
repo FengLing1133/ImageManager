@@ -5,7 +5,7 @@ import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import  javafx.scene.control.Label;
+import javafx.scene.control.Label;
 import javafx.util.Duration;
 
 import java.io.File;
@@ -38,11 +38,11 @@ public class SlideShowController {
     public void setImagePaths(List<String> imagePaths) {
         this.imagePaths = imagePaths;
         //更新页码标签
-        if(imagePaths != null && !imagePaths.isEmpty()){
-            pageLabel.setText( (currentIndex + 1) + "/" + imagePaths.size());
+        if (imagePaths != null && !imagePaths.isEmpty()) {
+            pageLabel.setText((currentIndex + 1) + "/" + imagePaths.size());
             //显示第一张图片
             loadImage(imagePaths.get(currentIndex));
-        }else{
+        } else {
             pageLabel.setText("0/0");
             slideImageView.setImage(null);
             System.out.println("提示：未收集到图片路径，幻灯片无图片可显示");
@@ -51,11 +51,11 @@ public class SlideShowController {
 
     //加载图片到ImageView
     private void loadImage(String imagePath) {
-        try{
+        try {
             Image image = new Image(new File(imagePath).toURI().toString(),
-                                    slideImageView.getFitWidth(),
-                                    slideImageView.getFitHeight(),
-                                 true, true);
+                    slideImageView.getFitWidth(),
+                    slideImageView.getFitHeight(),
+                    true, true);
             slideImageView.setImage(image);
             slideImageView.setScaleX(zoomScale);
             slideImageView.setScaleY(zoomScale);
@@ -68,19 +68,19 @@ public class SlideShowController {
     //上一张图片
     @FXML
     public void prevImage() {
-        if(imagePaths == null || imagePaths.isEmpty()) return;
+        if (imagePaths == null || imagePaths.isEmpty()) return;
         currentIndex = (currentIndex - 1 + imagePaths.size()) % imagePaths.size();
         loadImage(imagePaths.get(currentIndex));
-        pageLabel.setText( (currentIndex + 1) + "/" + imagePaths.size());
+        pageLabel.setText((currentIndex + 1) + "/" + imagePaths.size());
     }
 
     //下一张图片
     @FXML
     public void nextImage() {
-        if(imagePaths == null || imagePaths.isEmpty()) return;
+        if (imagePaths == null || imagePaths.isEmpty()) return;
         currentIndex = (currentIndex + 1) % imagePaths.size();
         loadImage(imagePaths.get(currentIndex));
-        pageLabel.setText( (currentIndex + 1) + "/" + imagePaths.size());
+        pageLabel.setText((currentIndex + 1) + "/" + imagePaths.size());
     }
 
     //放大图片
@@ -94,7 +94,7 @@ public class SlideShowController {
     //缩小图片
     @FXML
     public void zoomOut() {
-        if(zoomScale > 0.1){
+        if (zoomScale > 0.1) {
             zoomScale -= 0.1;
             slideImageView.setScaleX(zoomScale);
             slideImageView.setScaleY(zoomScale);
@@ -104,7 +104,7 @@ public class SlideShowController {
     //开始自动播放
     @FXML
     public void startPlay() {
-        if(imagePaths == null || imagePaths.isEmpty()) return;
+        if (imagePaths == null || imagePaths.isEmpty()) return;
         playTimeline.play();
     }
 

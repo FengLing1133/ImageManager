@@ -32,6 +32,9 @@ public class MainController {
     @FXML
     private FlowPane imageFlowPane;
 
+    @FXML
+    private ScrollPane imageScrollPane;
+
     private int currentPage = 0;
     private final int PAGE_SIZE = 50;//每页加载50张图片
     private File currentDir;//记录当前选中的目录
@@ -42,8 +45,6 @@ public class MainController {
     private static final String STATUS_UNLOADED = "unloaded";   // 未加载
     private static final String STATUS_LOADING = "loading";     // 加载中
     private static final String STATUS_LOADED = "loaded";       // 已加载
-
-
 
 
     //程序启动后初始化
@@ -95,6 +96,11 @@ public class MainController {
         initFlowPaneHint();
         //初始化目录树(加载本地文件系统)
         initDirectoryTree();
+
+        // 强制 FlowPane 的宽度等于 ScrollPane 视口的宽度
+        imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+            imageFlowPane.setPrefWidth(newBounds.getWidth());
+        });
     }
 
     //目录加载线程池
@@ -305,7 +311,7 @@ public class MainController {
         for (File file : files) {
             String name = file.getName().toLowerCase();
             if (name.endsWith(".jpg") || name.endsWith(".png")
-                || name.endsWith(".gif") || name.endsWith(".jpeg")) {
+                    || name.endsWith(".gif") || name.endsWith(".jpeg")) {
                 imageFiles.add(file);
             }
         }
@@ -364,7 +370,7 @@ public class MainController {
                             String name = file.getName().toLowerCase();
                             //确保后缀判断完整
                             if (name.endsWith(".jpg") || name.endsWith(".png")
-                                || name.endsWith(".gif") || name.endsWith(".jpeg")) {
+                                    || name.endsWith(".gif") || name.endsWith(".jpeg")) {
                                 //拼接正确的文件路径（file:前缀可省略，Image可直接识别绝对路径）
                                 imagePaths.add(file.getAbsolutePath());
                                 System.out.println("收集到图片：" + file.getAbsolutePath()); // 调试日志
@@ -374,7 +380,7 @@ public class MainController {
                 }
                 // 调试：打印收集到的图片数量
                 System.out.println("选中目录：" + currentDir + "，收集到图片数量：" + imagePaths.size());
-            }else {
+            } else {
                 showAlert(Alert.AlertType.WARNING, "未选择目录", "请先在左侧选择包含图片的文件夹");
                 return;
             }
@@ -407,7 +413,6 @@ public class MainController {
         //临时实现：清空FlowPane中所有节点选中的样式
         imageFlowPane.getChildren().forEach(node -> node.setStyle(""));
     }
-
 
 
     //辅助方法：弹出提示框
