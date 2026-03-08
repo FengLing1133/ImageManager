@@ -5,6 +5,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTreeCell;
 import javafx.scene.image.ImageView;
@@ -13,6 +14,7 @@ import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.net.URL;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -41,30 +43,7 @@ public class MainController {
     private static final String STATUS_LOADING = "loading";     // 加载中
     private static final String STATUS_LOADED = "loaded";       // 已加载
 
-    //目录加载线程池
-    private final ExecutorService dirExecutor = Executors.newFixedThreadPool(2, runnable -> {
-        Thread thread = new Thread(runnable);
-        thread.setDaemon(true);//线程设置为守护线程，程序退出时自动关闭
-        thread.setName("Directory Loader");
-        return thread;
-    });
 
-    //图片加载线程池
-    private final ExecutorService imageExecutor = Executors.newFixedThreadPool(3, runnable -> {
-        Thread thread = new Thread(runnable);
-        thread.setDaemon(true);
-        thread.setName("Image Loader");
-        return thread;
-    });
-
-    //图片缓存(LRU策略，最多缓存200张，避免重复加载)
-    private final Map<String, Image> imageCache = Collections.synchronizedMap(
-            new LinkedHashMap<>(100, 0.75f, true) {
-                @Override
-                protected boolean removeEldestEntry(Map.Entry<String, Image> eldest) {
-                    return size() > 200;
-                }
-            });
 
 
     //程序启动后初始化
@@ -75,10 +54,10 @@ public class MainController {
             TreeCell<String> cell = new TextFieldTreeCell<>();
             //点击节点文本也能触发展开/折叠
             cell.setOnMouseClicked(event -> {
-                if(event.getClickCount() == 1 && cell.getTreeItem() != null){
+                if (event.getClickCount() == 1 && cell.getTreeItem() != null) {
                     TreeItem<String> item = cell.getTreeItem();
                     //仅切换非根节点(避免点击"我的电脑"触发展开)
-                    if(!item.getValue().equals("我的电脑")){
+                    if (!item.getValue().equals("我的电脑")) {
                         item.setExpanded(!item.isExpanded());
                     }
                 }
@@ -118,33 +97,30 @@ public class MainController {
         initDirectoryTree();
     }
 
-    //初始化FlowPane提示
-    private void initFlowPaneHint() {
-        Label hintLabel = new Label("请选择包含图片的文件夹");
-        hintLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 14px;");
-        imageFlowPane.getChildren().add(hintLabel);
-        FlowPane.setMargin(hintLabel, new Insets(20, 0, 0, 0));
-    }
+    //目录加载线程池
+    private final ExecutorService dirExecutor = Executors.newFixedThreadPool(2, runnable -> {
+        Thread thread = new Thread(runnable);
+        thread.setDaemon(true);//线程设置为守护线程，程序退出时自动关闭
+        thread.setName("Directory Loader");
+        return thread;
+    });
 
-    //点击Play按钮，打开幻灯片界面
-    @FXML
-    private void openSlideShow() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/slideShow.fxml"));
-            Stage slideStage = new Stage();
-            slideStage.setTitle("幻灯片播放");
-            slideStage.setScene(new javafx.scene.Scene(loader.load()));
-            slideStage.show();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+    //图片加载线程池
+    private final ExecutorService imageExecutor = Executors.newFixedThreadPool(3, runnable -> {
+        Thread thread = new Thread(runnable);
+        thread.setDaemon(true);
+        thread.setName("Image Loader");
+        return thread;
+    });
 
-    @FXML
-    private void clickBlank() {
-        //临时实现：清空FlowPane中所有节点选中的样式
-        imageFlowPane.getChildren().forEach(node -> node.setStyle(""));
-    }
+    //图片缓存(LRU策略，最多缓存200张，避免重复加载)
+    private final Map<String, Image> imageCache = Collections.synchronizedMap(
+            new LinkedHashMap<>(100, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Image> eldest) {
+                    return size() > 200;
+                }
+            });
 
     //初始化全盘符目录树（支持扫描全硬盘）
     private void initDirectoryTree() {
@@ -328,7 +304,8 @@ public class MainController {
         List<File> imageFiles = new ArrayList<>();
         for (File file : files) {
             String name = file.getName().toLowerCase();
-            if (name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".gif") || name.endsWith(".jpeg")) {
+            if (name.endsWith(".jpg") || name.endsWith(".png")
+                || name.endsWith(".gif") || name.endsWith(".jpeg")) {
                 imageFiles.add(file);
             }
         }
@@ -360,6 +337,89 @@ public class MainController {
                 FlowPane.setMargin(noImageLabel, new Insets(20, 0, 0, 0));
             });
         }
+    }
+
+    //初始化FlowPane提示
+    private void initFlowPaneHint() {
+        Label hintLabel = new Label("请选择包含图片的文件夹");
+        hintLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 14px;");
+        imageFlowPane.getChildren().add(hintLabel);
+        FlowPane.setMargin(hintLabel, new Insets(20, 0, 0, 0));
+    }
+
+    //点击Play按钮，打开幻灯片界面
+    @FXML
+    private void openSlideShow() {
+        try {
+            URL fxmlUrl = getClass().getResource("/slideShow.fxml");//获取FXML文件URL
+
+            //收集当前目录的所有图片路径(传递给幻灯片)
+            List<String> imagePaths = new ArrayList<>();
+            if (currentDir != null) {
+                File[] files = currentDir.listFiles();
+                if (files != null) {
+                    for (File file : files) {
+                        //排除目录，只处理文件
+                        if (file.isFile()) {
+                            String name = file.getName().toLowerCase();
+                            //确保后缀判断完整
+                            if (name.endsWith(".jpg") || name.endsWith(".png")
+                                || name.endsWith(".gif") || name.endsWith(".jpeg")) {
+                                //拼接正确的文件路径（file:前缀可省略，Image可直接识别绝对路径）
+                                imagePaths.add(file.getAbsolutePath());
+                                System.out.println("收集到图片：" + file.getAbsolutePath()); // 调试日志
+                            }
+                        }
+                    }
+                }
+                // 调试：打印收集到的图片数量
+                System.out.println("选中目录：" + currentDir + "，收集到图片数量：" + imagePaths.size());
+            }else {
+                showAlert(Alert.AlertType.WARNING, "未选择目录", "请先在左侧选择包含图片的文件夹");
+                return;
+            }
+
+            //加载FXML
+            FXMLLoader loader = new FXMLLoader(fxmlUrl);
+            Parent slideRoot = loader.load();
+            SlideShowController slideController = loader.getController();
+            //传递图片路径列表给幻灯片控制器
+            slideController.setImagePaths(imagePaths);
+
+            //初始化幻灯片窗口
+            Stage slideStage = new Stage();
+            slideStage.setTitle("幻灯片播放");
+            slideStage.setScene(new javafx.scene.Scene(slideRoot, 1000, 700));
+            slideStage.initOwner((Stage) dirTreeView.getScene().getWindow());//绑定父窗口
+            slideStage.centerOnScreen();//居中显示
+            slideStage.show();
+
+        } catch (Exception e) {
+            showAlert(Alert.AlertType.ERROR, "打开幻灯片失败",
+                    "错误信息：" + e.getMessage() + "\n" +
+                            "请检查slideShow.fxml是否合法或控制器是否正确");
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void clickBlank() {
+        //临时实现：清空FlowPane中所有节点选中的样式
+        imageFlowPane.getChildren().forEach(node -> node.setStyle(""));
+    }
+
+
+
+    //辅助方法：弹出提示框
+    private void showAlert(Alert.AlertType type, String title, String content) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(type);
+            alert.setTitle(title);
+            alert.setHeaderText(null);
+            alert.setContentText(content);
+            alert.initOwner((Stage) dirTreeView.getScene().getWindow());
+            alert.showAndWait();
+        });
     }
 
     //关闭所有线程池
