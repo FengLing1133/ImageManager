@@ -127,6 +127,9 @@ public class MainController {
     private int currentLoadedCount = 0;
     private boolean isLoading = false;
 
+    //统一缩略图尺寸
+    private static final int THUMB_SIZE = 120;
+
     //初始化全盘符目录树（支持扫描全硬盘）
     private void initDirectoryTree() {
         //创建根节点(显示“我的电脑”)
@@ -260,13 +263,13 @@ public class MainController {
                     image = imageCache.get(filePath);
                 } else {
                     //异步加载缩略图
-                    image = new Image(file.toURI().toString(), 150, 150, true, true, true);
+                    image = new Image(file.toURI().toString(), THUMB_SIZE, THUMB_SIZE, true, true, true);
                     imageCache.put(filePath, image);
                 }
                 //构建ImageView
                 ImageView imageView = new ImageView(image);
-                imageView.setFitWidth(150);
-                imageView.setFitHeight(150);
+                imageView.setFitWidth(THUMB_SIZE);
+                imageView.setFitHeight(THUMB_SIZE);
                 imageView.setPreserveRatio(true);
                 imageView.setSmooth(true);//抗锯齿，优化图片质量
 
@@ -308,24 +311,27 @@ public class MainController {
         if (file.isDirectory()) {
             // 文件夹：同步加载图标
             ImageView imageView = new ImageView(new Image(getClass().getResourceAsStream("/folder-icon.png")));
-            imageView.setFitWidth(100);
-            imageView.setFitHeight(100);
+            imageView.setFitWidth(THUMB_SIZE);
+            imageView.setFitHeight(THUMB_SIZE);
             imageView.setPreserveRatio(true);
+            imageView.setSmooth(true);
+            imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
             Label nameLabel = new Label(file.getName());
-            nameLabel.setMaxWidth(100);
+            nameLabel.setMaxWidth(THUMB_SIZE);
             nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
             nameLabel.setWrapText(true);
             VBox vBox = new VBox(5, imageView, nameLabel);
             vBox.setPadding(new Insets(5));
-            vBox.setStyle("-fx-alignment: center;");
+            vBox.setStyle("-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;");
             // 单击选中，双击进入
             vBox.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 1) {
-                    imageFlowPane.getChildren().forEach(node -> node.setStyle("-fx-alignment: center;"));
-                    vBox.setStyle("-fx-border-color: blue; -fx-border-width: 2px; -fx-alignment: center;");
+                    imageFlowPane.getChildren().forEach(node -> node.setStyle("-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;"));
+                    vBox.setStyle("-fx-border-color: #2196f3; -fx-border-width: 2px; -fx-background-color: #e3f2fd; -fx-alignment: center;");
                 } else if (event.getClickCount() == 2 && file.isDirectory()) {
                     loadImagesToFlowPane(file);
                 }
+                event.consume();
             });
             callback.accept(vBox);
         } else {
@@ -333,41 +339,50 @@ public class MainController {
             if (name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".gif") || name.endsWith(".jpeg")) {
                 // 图片文件：异步加载缩略图
                 loadImageAsync(file, imageView -> {
+                    imageView.setFitWidth(THUMB_SIZE);
+                    imageView.setFitHeight(THUMB_SIZE);
+                    imageView.setPreserveRatio(true);
+                    imageView.setSmooth(true);
+                    imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
                     Label nameLabel = new Label(file.getName());
-                    nameLabel.setMaxWidth(100);
+                    nameLabel.setMaxWidth(THUMB_SIZE);
                     nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
                     nameLabel.setWrapText(true);
                     VBox vBox = new VBox(5, imageView, nameLabel);
                     vBox.setPadding(new Insets(5));
-                    vBox.setStyle("-fx-alignment: center;");
+                    vBox.setStyle("-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;");
                     // 单击选中，双击文件夹进入（但这里是文件，所以双击无操作）
                     vBox.setOnMouseClicked(event -> {
                         if (event.getClickCount() == 1) {
-                            imageFlowPane.getChildren().forEach(node -> node.setStyle("-fx-alignment: center;"));
-                            vBox.setStyle("-fx-border-color: blue; -fx-border-width: 2px; -fx-alignment: center;");
+                            imageFlowPane.getChildren().forEach(node -> node.setStyle("-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;"));
+                            vBox.setStyle("-fx-border-color: #2196f3; -fx-border-width: 2px; -fx-background-color: #e3f2fd; -fx-alignment: center;");
                         }
+                        event.consume();
                     });
                     callback.accept(vBox);
                 });
             } else {
                 // 其他文件：同步加载图标
                 ImageView imageView = new ImageView(new Image(getClass().getResourceAsStream("/file-icon.png")));
-                imageView.setFitWidth(100);
-                imageView.setFitHeight(100);
+                imageView.setFitWidth(THUMB_SIZE);
+                imageView.setFitHeight(THUMB_SIZE);
                 imageView.setPreserveRatio(true);
+                imageView.setSmooth(true);
+                imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
                 Label nameLabel = new Label(file.getName());
-                nameLabel.setMaxWidth(100);
+                nameLabel.setMaxWidth(THUMB_SIZE);
                 nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
                 nameLabel.setWrapText(true);
                 VBox vBox = new VBox(5, imageView, nameLabel);
                 vBox.setPadding(new Insets(5));
-                vBox.setStyle("-fx-alignment: center;");
+                vBox.setStyle("-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;");
                 // 单击选中
                 vBox.setOnMouseClicked(event -> {
                     if (event.getClickCount() == 1) {
-                        imageFlowPane.getChildren().forEach(node -> node.setStyle("-fx-alignment: center;"));
-                        vBox.setStyle("-fx-border-color: blue; -fx-border-width: 2px; -fx-alignment: center;");
+                        imageFlowPane.getChildren().forEach(node -> node.setStyle("-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;"));
+                        vBox.setStyle("-fx-border-color: #2196f3; -fx-border-width: 2px; -fx-background-color: #e3f2fd; -fx-alignment: center;");
                     }
+                    event.consume();
                 });
                 callback.accept(vBox);
             }
