@@ -19,7 +19,6 @@ public class MainApplication extends Application {
         primaryStage.setTitle("图片管理器");
         primaryStage.setScene(new Scene(fxmlLoader.load()));
         primaryStage.show();
-
     }
 
     @Override

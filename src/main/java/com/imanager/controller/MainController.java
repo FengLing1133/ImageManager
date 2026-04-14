@@ -11,6 +11,7 @@ import javafx.scene.control.cell.TextFieldTreeCell;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.image.Image;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.File;
@@ -35,8 +36,6 @@ public class MainController {
     @FXML
     private ScrollPane imageScrollPane;
 
-    private int currentPage = 0;
-    private final int PAGE_SIZE = 50;//每页加载50张图片
     private File currentDir;//记录当前选中的目录
 
     //目录节点加载状态缓存
@@ -75,20 +74,8 @@ public class MainController {
                 File selectedDir = new File(fullPath);
                 if (selectedDir != null && selectedDir.isDirectory()) {
                     currentDir = selectedDir;
-                    currentPage = 0;
-                    loadImagesToFlowPane(selectedDir, currentPage);
+                    loadImagesToFlowPane(selectedDir);
                 }
-            }
-        });
-
-        //FlowPane滚动到底部加载下一页(分页核心)
-        imageFlowPane.setOnScroll(event -> {
-            if (currentDir == null) return;
-            //判断是否滚动到底部
-            boolean isAtBottom = event.getTotalDeltaY() >= imageFlowPane.getHeight() - 100;
-            if (isAtBottom) {
-                currentPage++;
-                loadImagesToFlowPane(currentDir, currentPage);//加载下一页图片
             }
         });
 
@@ -100,6 +87,13 @@ public class MainController {
         // 强制 FlowPane 的宽度等于 ScrollPane 视口的宽度
         imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
             imageFlowPane.setPrefWidth(newBounds.getWidth());
+        });
+
+        // 添加滚动监听器，当滚动到80%时加载下一批
+        imageScrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal.doubleValue() > 0.8) {
+                loadNextBatch();
+            }
         });
     }
 
@@ -127,6 +121,11 @@ public class MainController {
                     return size() > 200;
                 }
             });
+
+    private List<File> allFiles = new ArrayList<>();
+    private int batchSize = 50;
+    private int currentLoadedCount = 0;
+    private boolean isLoading = false;
 
     //初始化全盘符目录树（支持扫描全硬盘）
     private void initDirectoryTree() {
@@ -271,13 +270,6 @@ public class MainController {
                 imageView.setPreserveRatio(true);
                 imageView.setSmooth(true);//抗锯齿，优化图片质量
 
-                // 选中样式
-                imageView.setOnMouseClicked(event -> {
-                    Platform.runLater(() -> {
-                        imageFlowPane.getChildren().forEach(node -> node.setStyle(""));
-                        imageView.setStyle("-fx-border-color: blue; -fx-border-width: 2px;");
-                    });
-                });
                 callback.accept(imageView);
             } catch (Exception e) {
                 System.out.println("⚠️ 图片加载失败：" + file.getName());
@@ -285,63 +277,100 @@ public class MainController {
         });
     }
 
-    // 分页加载图片到FlowPane
-    private void loadImagesToFlowPane(File dir, int page) {
-        //第一页清空原有内容，后续页追加
-        if (page == 0) {
-            Platform.runLater(() -> imageFlowPane.getChildren().clear());
-        }
-
-        File[] files = dir.listFiles();//获取文件夹下的所有文件
+    // 加载图片和文件夹到FlowPane（分页加载）
+    private void loadImagesToFlowPane(File dir) {
+        allFiles.clear();
+        currentLoadedCount = 0;
+        isLoading = false;
+        File[] files = dir.listFiles();
         if (files == null || files.length == 0) {
-            if (page == 0) { // 只有第一页为空时显示提示
-                // 空目录提示也异步执行，不阻塞主线程
-                Platform.runLater(() -> {
-                    Label emptyLabel = new Label("当前目录无文件");
-                    emptyLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 14px;");
-                    imageFlowPane.getChildren().add(emptyLabel);
-                    FlowPane.setMargin(emptyLabel, new Insets(20, 0, 0, 0));
-                });
-            }
+            Platform.runLater(() -> {
+                imageFlowPane.getChildren().clear();
+                Label emptyLabel = new Label("当前目录无文件");
+                emptyLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 14px;");
+                imageFlowPane.getChildren().add(emptyLabel);
+                FlowPane.setMargin(emptyLabel, new Insets(20, 0, 0, 0));
+            });
             return;
         }
+        Arrays.sort(files, (f1, f2) -> {
+            if (f1.isDirectory() && !f2.isDirectory()) return -1;
+            if (!f1.isDirectory() && f2.isDirectory()) return 1;
+            return f1.getName().compareToIgnoreCase(f2.getName());
+        });
+        allFiles.addAll(Arrays.asList(files));
+        Platform.runLater(() -> imageFlowPane.getChildren().clear());
+        loadNextBatch();
+    }
 
-        //筛选图片文件
-        List<File> imageFiles = new ArrayList<>();
-        for (File file : files) {
+    //异步创建VBox（图标+名称+点击事件）
+    private void createVBoxAsync(File file, Consumer<VBox> callback) {
+        if (file.isDirectory()) {
+            // 文件夹：同步加载图标
+            ImageView imageView = new ImageView(new Image(getClass().getResourceAsStream("/folder-icon.png")));
+            imageView.setFitWidth(100);
+            imageView.setFitHeight(100);
+            imageView.setPreserveRatio(true);
+            Label nameLabel = new Label(file.getName());
+            nameLabel.setMaxWidth(100);
+            nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
+            nameLabel.setWrapText(true);
+            VBox vBox = new VBox(5, imageView, nameLabel);
+            vBox.setPadding(new Insets(5));
+            vBox.setStyle("-fx-alignment: center;");
+            // 单击选中，双击进入
+            vBox.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 1) {
+                    imageFlowPane.getChildren().forEach(node -> node.setStyle("-fx-alignment: center;"));
+                    vBox.setStyle("-fx-border-color: blue; -fx-border-width: 2px; -fx-alignment: center;");
+                } else if (event.getClickCount() == 2 && file.isDirectory()) {
+                    loadImagesToFlowPane(file);
+                }
+            });
+            callback.accept(vBox);
+        } else {
             String name = file.getName().toLowerCase();
-            if (name.endsWith(".jpg") || name.endsWith(".png")
-                    || name.endsWith(".gif") || name.endsWith(".jpeg")) {
-                imageFiles.add(file);
-            }
-        }
-
-        //分页计算
-        int start = page * PAGE_SIZE;
-        if (start >= imageFiles.size()) {
-            return;//没有更多图片
-        }
-        int end = Math.min(start + PAGE_SIZE, imageFiles.size());
-        List<File> pageFiles = imageFiles.subList(start, end);
-
-        //异步加载当前页图片
-        for (File file : pageFiles) {
-            loadImageAsync(file, imageView -> {
-                Platform.runLater(() -> {
-                    FlowPane.setMargin(imageView, new Insets(5));
-                    imageFlowPane.getChildren().add(imageView);
+            if (name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".gif") || name.endsWith(".jpeg")) {
+                // 图片文件：异步加载缩略图
+                loadImageAsync(file, imageView -> {
+                    Label nameLabel = new Label(file.getName());
+                    nameLabel.setMaxWidth(100);
+                    nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
+                    nameLabel.setWrapText(true);
+                    VBox vBox = new VBox(5, imageView, nameLabel);
+                    vBox.setPadding(new Insets(5));
+                    vBox.setStyle("-fx-alignment: center;");
+                    // 单击选中，双击文件夹进入（但这里是文件，所以双击无操作）
+                    vBox.setOnMouseClicked(event -> {
+                        if (event.getClickCount() == 1) {
+                            imageFlowPane.getChildren().forEach(node -> node.setStyle("-fx-alignment: center;"));
+                            vBox.setStyle("-fx-border-color: blue; -fx-border-width: 2px; -fx-alignment: center;");
+                        }
+                    });
+                    callback.accept(vBox);
                 });
-            });
-        }
-
-        // 第一页无图片时显示提示
-        if (page == 0 && imageFiles.isEmpty()) {
-            Platform.runLater(() -> {
-                Label noImageLabel = new Label("当前目录无支持的图片格式（仅支持jpg/png/gif/jpeg）");
-                noImageLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 14px;");
-                imageFlowPane.getChildren().add(noImageLabel);
-                FlowPane.setMargin(noImageLabel, new Insets(20, 0, 0, 0));
-            });
+            } else {
+                // 其他文件：同步加载图标
+                ImageView imageView = new ImageView(new Image(getClass().getResourceAsStream("/file-icon.png")));
+                imageView.setFitWidth(100);
+                imageView.setFitHeight(100);
+                imageView.setPreserveRatio(true);
+                Label nameLabel = new Label(file.getName());
+                nameLabel.setMaxWidth(100);
+                nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
+                nameLabel.setWrapText(true);
+                VBox vBox = new VBox(5, imageView, nameLabel);
+                vBox.setPadding(new Insets(5));
+                vBox.setStyle("-fx-alignment: center;");
+                // 单击选中
+                vBox.setOnMouseClicked(event -> {
+                    if (event.getClickCount() == 1) {
+                        imageFlowPane.getChildren().forEach(node -> node.setStyle("-fx-alignment: center;"));
+                        vBox.setStyle("-fx-border-color: blue; -fx-border-width: 2px; -fx-alignment: center;");
+                    }
+                });
+                callback.accept(vBox);
+            }
         }
     }
 
@@ -431,5 +460,25 @@ public class MainController {
     public void shutdown() {
         dirExecutor.shutdown();
         imageExecutor.shutdown();
+    }
+
+    // 加载下一批文件到FlowPane
+    private void loadNextBatch() {
+        if (isLoading || currentLoadedCount >= allFiles.size()) {
+            return;
+        }
+        isLoading = true;
+        int end = Math.min(currentLoadedCount + batchSize, allFiles.size());
+        for (int i = currentLoadedCount; i < end; i++) {
+            File file = allFiles.get(i);
+            createVBoxAsync(file, vBox -> {
+                Platform.runLater(() -> {
+                    imageFlowPane.getChildren().add(vBox);
+                    FlowPane.setMargin(vBox, new Insets(5));
+                });
+            });
+        }
+        currentLoadedCount = end;
+        isLoading = false;
     }
 }
