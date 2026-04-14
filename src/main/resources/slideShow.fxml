@@ -3,9 +3,8 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.text.Font?>
@@ -17,17 +16,9 @@
         <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
     </padding>
     <center>
-        <ScrollPane prefHeight="700.0" prefWidth="1000.0" BorderPane.alignment="CENTER">
-            <content>
-                <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="700.0" prefWidth="1000.0">
-                    <children>
-                        <ImageView fx:id="slideImageView" layoutX="215.0" layoutY="147.0" pickOnBounds="true"
-                                   preserveRatio="true" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
-                                   AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
-                    </children>
-                </AnchorPane>
-            </content>
-        </ScrollPane>
+        <StackPane fx:id="stackPane" style="-fx-background-color: #000000;">
+            <ImageView fx:id="slideImageView" pickOnBounds="true" preserveRatio="true"/>
+        </StackPane>
     </center>
     <bottom>
         <HBox prefHeight="60.0" prefWidth="1000.0" spacing="10.0" BorderPane.alignment="CENTER_RIGHT">
@@ -37,8 +28,8 @@
             <children>
                 <Button fx:id="btnPrev" mnemonicParsing="false" onAction="#prevImage" text="Prev"/>
                 <Button fx:id="btnNext" mnemonicParsing="false" onAction="#nextImage" text="Next"/>
-                <Button fx:id="btnZoomIn" mnemonicParsing="false" onAction="#zoomIn" text="Zoom In"/>
-                <Button fx:id="btnZoomOut" mnemonicParsing="false" onAction="#zoomOut" text="Zoom Out"/>
+                <Button fx:id="btnZoomIn" mnemonicParsing="false" onAction="#zoomIn" onMousePressed="#stopZooming" text="Zoom In"/>
+                <Button fx:id="btnZoomOut" mnemonicParsing="false" onAction="#zoomOut" onMousePressed="#stopZooming" text="Zoom Out"/>
                 <Button fx:id="btnPlay" mnemonicParsing="false" onAction="#startPlay" text="Play"/>
                 <Button fx:id="btnStop" mnemonicParsing="false" onAction="#stopPlay" text="Stop"/>
                 <Label fx:id="pageLabel" prefHeight="40.0" prefWidth="100.0" style="-fx-background-color: #83d9b6;"

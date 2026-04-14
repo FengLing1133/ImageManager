@@ -2,10 +2,14 @@ package com.imanager.controller;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.control.Label;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.StackPane;
 import javafx.util.Duration;
 
 import java.io.File;
@@ -16,56 +20,107 @@ public class SlideShowController {
     @FXML
     private ImageView slideImageView;
     @FXML
-    private Label pageLabel;//页码标签
+    private Label pageLabel;
+    @FXML
+    private StackPane stackPane;
 
-    private List<String> imagePaths;//图片路径列表(从主控制器传递)
-    private int currentIndex = 0;//当前图片索引
-    private double zoomScale = 1.0;//图片缩放比例
-    private Timeline playTimeline;//自动播放的时间线
+    private List<String> imagePaths;
+    private int currentIndex = 0;
+    private double baseScale = 1.0;
+    private double zoomScale = 1.0;
+    private Timeline playTimeline;
 
-    //初始化方法(FXML加载后自动执行)
     @FXML
     public void initialize() {
-        // 调试：验证pageLabel是否绑定成功（启动后看控制台）
-        System.out.println("pageLabel绑定状态：" + (pageLabel == null ? "失败（null）" : "成功"));
+        slideImageView.setPreserveRatio(true);
+        slideImageView.setSmooth(true);
+        slideImageView.setCache(false);
 
-        //初始化自动播放时间线
-        playTimeline = new Timeline(new KeyFrame(Duration.seconds(2), event -> nextImage()));
-        playTimeline.setCycleCount(Timeline.INDEFINITE);//无限循环
+        slideImageView.imageProperty().addListener((obs, oldImg, newImg) -> {
+            if (newImg != null) {
+                Platform.runLater(() -> {
+                    double windowWidth = stackPane.getWidth();
+                    double windowHeight = stackPane.getHeight();
+                    double padding = 40.0;
+
+                    double scaleX = (windowWidth - padding) / newImg.getWidth();
+                    double scaleY = (windowHeight - padding) / newImg.getHeight();
+                    baseScale = Math.min(scaleX, scaleY);
+                    zoomScale = 1.0;
+
+                    slideImageView.setFitWidth(newImg.getWidth() * baseScale);
+                    slideImageView.setFitHeight(newImg.getHeight() * baseScale);
+                });
+            }
+        });
+
+        stackPane.setOnScroll(event -> {
+            if (slideImageView.getImage() == null) return;
+
+            double delta = event.getDeltaY();
+
+            if (delta > 0) {
+                zoomScale = Math.min(zoomScale * 1.15, 10.0);
+            } else {
+                zoomScale = Math.max(zoomScale / 1.15, 0.1);
+            }
+
+            double finalScale = baseScale * zoomScale;
+            slideImageView.setFitWidth(slideImageView.getImage().getWidth() * finalScale);
+            slideImageView.setFitHeight(slideImageView.getImage().getHeight() * finalScale);
+        });
     }
 
-    //接收从主控制器传递的图片路径列表
+    private void fitImageToWindow() {
+        Image image = slideImageView.getImage();
+        if (image == null) return;
+
+        double windowWidth = stackPane.getWidth();
+        double windowHeight = stackPane.getHeight();
+
+        if (windowWidth <= 0 || windowHeight <= 0) return;
+
+        double padding = 40.0;
+        double availableWidth = windowWidth - padding;
+        double availableHeight = windowHeight - padding;
+
+        double scaleX = availableWidth / image.getWidth();
+        double scaleY = availableHeight / image.getHeight();
+        baseScale = Math.min(scaleX, scaleY);
+        zoomScale = 1.0;
+
+        slideImageView.setFitWidth(image.getWidth() * baseScale);
+        slideImageView.setFitHeight(image.getHeight() * baseScale);
+    }
+
     public void setImagePaths(List<String> imagePaths) {
         this.imagePaths = imagePaths;
-        //更新页码标签
+        this.currentIndex = 0;
         if (imagePaths != null && !imagePaths.isEmpty()) {
             pageLabel.setText((currentIndex + 1) + "/" + imagePaths.size());
-            //显示第一张图片
-            loadImage(imagePaths.get(currentIndex));
+            Platform.runLater(() -> loadImage(imagePaths.get(currentIndex)));
         } else {
             pageLabel.setText("0/0");
             slideImageView.setImage(null);
-            System.out.println("提示：未收集到图片路径，幻灯片无图片可显示");
         }
     }
 
-    //加载图片到ImageView
+    public void setCurrentIndex(int index) {
+        this.currentIndex = index;
+        loadImage(imagePaths.get(currentIndex));
+        pageLabel.setText((currentIndex + 1) + "/" + imagePaths.size());
+    }
+
     private void loadImage(String imagePath) {
         try {
-            Image image = new Image(new File(imagePath).toURI().toString(),
-                    slideImageView.getFitWidth(),
-                    slideImageView.getFitHeight(),
-                    true, true);
+            Image image = new Image(new File(imagePath).toURI().toString());
             slideImageView.setImage(image);
-            slideImageView.setScaleX(zoomScale);
-            slideImageView.setScaleY(zoomScale);
+            zoomScale = 1.0;
         } catch (Exception e) {
             System.out.println("加载图片失败：" + imagePath);
-            e.printStackTrace();
         }
     }
 
-    //上一张图片
     @FXML
     public void prevImage() {
         if (imagePaths == null || imagePaths.isEmpty()) return;
@@ -74,7 +129,6 @@ public class SlideShowController {
         pageLabel.setText((currentIndex + 1) + "/" + imagePaths.size());
     }
 
-    //下一张图片
     @FXML
     public void nextImage() {
         if (imagePaths == null || imagePaths.isEmpty()) return;
@@ -83,34 +137,35 @@ public class SlideShowController {
         pageLabel.setText((currentIndex + 1) + "/" + imagePaths.size());
     }
 
-    //放大图片
     @FXML
     public void zoomIn() {
-        zoomScale += 0.1;
-        slideImageView.setScaleX(zoomScale);
-        slideImageView.setScaleY(zoomScale);
+        if (playTimeline != null) playTimeline.stop();
+        zoomScale = Math.min(zoomScale * 1.1, 5.0);
+        slideImageView.setFitWidth(slideImageView.getFitWidth() * 1.1);
+        slideImageView.setFitHeight(slideImageView.getFitHeight() * 1.1);
     }
 
-    //缩小图片
     @FXML
     public void zoomOut() {
-        if (zoomScale > 0.1) {
-            zoomScale -= 0.1;
-            slideImageView.setScaleX(zoomScale);
-            slideImageView.setScaleY(zoomScale);
-        }
+        if (playTimeline != null) playTimeline.stop();
+        zoomScale = Math.max(zoomScale / 1.1, 0.1);
+        slideImageView.setFitWidth(slideImageView.getFitWidth() / 1.1);
+        slideImageView.setFitHeight(slideImageView.getFitHeight() / 1.1);
     }
 
-    //开始自动播放
     @FXML
     public void startPlay() {
         if (imagePaths == null || imagePaths.isEmpty()) return;
         playTimeline.play();
     }
 
-    //停止自动播放
     @FXML
     public void stopPlay() {
         playTimeline.stop();
+    }
+
+    @FXML
+    private void stopZooming(javafx.scene.input.MouseEvent event) {
+        event.consume();
     }
 }
