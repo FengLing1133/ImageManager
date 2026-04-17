@@ -44,11 +44,11 @@
             </AnchorPane>
           <AnchorPane maxWidth="1.7976931348623157E308" minHeight="300.0" minWidth="300.0">
                <children>
-                  <ScrollPane fx:id="imageScrollPane" hbarPolicy="NEVER" layoutX="194.0" layoutY="148.0" maxWidth="1.7976931348623157E308" minHeight="290.0" minWidth="295.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                  <ScrollPane fx:id="imageScrollPane" hbarPolicy="NEVER" fitToWidth="false" fitToHeight="false" layoutX="194.0" layoutY="148.0" maxWidth="1.7976931348623157E308" minHeight="290.0" minWidth="295.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                      <content>
-                        <AnchorPane fx:id="imageAnchorPane" maxWidth="1.7976931348623157E308" minHeight="200.0" minWidth="0.0">
+                        <AnchorPane fx:id="imageAnchorPane" maxWidth="1.7976931348623157E308" minWidth="0.0">
                            <children>
-                              <FlowPane fx:id="imageFlowPane" hgap="10.0" vgap="10.0" minHeight="200.0" minWidth="0.0" onMouseClicked="#clickBlank" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="0.0">
+                              <FlowPane fx:id="imageFlowPane" hgap="10.0" vgap="10.0" onMouseClicked="#clickBlank">
                                  <padding>
                                     <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
                                  </padding>

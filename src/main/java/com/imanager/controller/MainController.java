@@ -72,11 +72,10 @@ public class MainController {
         initFlowPaneHint();
         //初始化目录树(加载本地文件系统)
         directoryTreeService.initDirectoryTree();
-        // 让FlowPane宽度始终等于ScrollPane视口宽度，实现铺满
-        imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
-            imageFlowPane.setPrefWidth(newBounds.getWidth());
-            //imageFlowPane.setPrefHeight(newBounds.getHeight());
-        });
+            imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+                imageFlowPane.setPrefWidth(newBounds.getWidth());
+                //imageFlowPane.setPrefHeight(newBounds.getHeight());
+         });
 
         // 让AnchorPane铺满ScrollPane可视区域，保证空白区可右键
         imageScrollPane.viewportBoundsProperty().addListener((obs, oldVal, newVal) -> {
