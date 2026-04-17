@@ -16,7 +16,6 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTreeCell;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.image.Image;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.input.MouseButton;
 import javafx.stage.Stage;
@@ -132,6 +131,20 @@ public class MainController {
         imageFlowPane.setOnMousePressed(event -> {
             if (blankContextMenu != null && blankContextMenu.isShowing()) {
                 blankContextMenu.hide();
+            }
+        });
+        imageAnchorPane.setOnMousePressed(event -> {
+            if (event.getButton() == MouseButton.PRIMARY) {
+                if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                    blankContextMenu.hide();
+                }
+            }
+        });
+        imageScrollPane.setOnMousePressed(event -> {
+            if (event.getButton() == MouseButton.PRIMARY) {
+                if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                    blankContextMenu.hide();
+                }
             }
         });
     }
@@ -401,6 +414,10 @@ public class MainController {
             return;
         }
         if (event.getButton() == MouseButton.PRIMARY) {
+            // 新增：左键点击空白时关闭空白菜单
+            if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                blankContextMenu.hide();
+            }
             selectedVBoxes.forEach(v -> v.setStyle(NORMAL_STYLE));
             selectedVBoxes.clear();
             updateTipLabel();

@@ -214,13 +214,24 @@ public class VBoxFactory {
         MenuItem pasteItem = new MenuItem("粘贴");
         pasteItem.setOnAction(e -> { if (onPaste != null) onPaste.run(); });
         contextMenu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
-        vBox.setOnContextMenuRequested(event -> contextMenu.show(vBox, event.getScreenX(), event.getScreenY()));
-        // 左右键都可选中；仅 Ctrl+左键启用多选切换。
+        vBox.setOnContextMenuRequested(event -> {
+            boolean alreadySelected = selectedVBoxes.contains(vBox);
+            if (!alreadySelected) {
+                selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
+                selectedVBoxes.clear();
+                selectedVBoxes.add(vBox);
+                vBox.setStyle(selectedStyle);
+                if (updateTipLabel != null) updateTipLabel.run();
+            }
+            contextMenu.show(vBox, event.getScreenX(), event.getScreenY());
+            event.consume();
+        });
+        // 仅左键和Ctrl+左键处理选中，右键不处理选中逻辑
         vBox.setOnMousePressed(event -> {
-            if (event.getButton() != MouseButton.PRIMARY && event.getButton() != MouseButton.SECONDARY) {
+            if (event.getButton() != MouseButton.PRIMARY) {
                 return;
             }
-            boolean ctrlMultiSelect = event.isControlDown() && event.getButton() == MouseButton.PRIMARY;
+            boolean ctrlMultiSelect = event.isControlDown();
             if (ctrlMultiSelect) {
                 if (selectedVBoxes.contains(vBox)) {
                     selectedVBoxes.remove(vBox);
