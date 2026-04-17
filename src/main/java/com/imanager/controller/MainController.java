@@ -57,6 +57,7 @@ public class MainController {
     private static final String NORMAL_STYLE = "-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;";
     private static final String SELECTED_STYLE = "-fx-border-color: #2196f3; -fx-border-width: 2px; -fx-background-color: #e3f2fd; -fx-alignment: center;";
     private ContextMenu blankContextMenu = null;
+    private ContextMenu imageContextMenu = null; // 保证图片右键菜单唯一
 
     // 目录历史栈，用于返回和撤销操作
     private final Stack<File> dirHistoryStack = new Stack<>();
@@ -267,10 +268,18 @@ public class MainController {
                 file,
                 vBox -> {
                     vBox.setOnContextMenuRequested(event -> {
+                        // 先关闭所有菜单
+                        if (imageContextMenu != null && imageContextMenu.isShowing()) {
+                            imageContextMenu.hide();
+                        }
+                        if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                            blankContextMenu.hide();
+                        }
                         int selCount = selectedVBoxes.size();
                         boolean allImage = allSelectedAreImages();
                         ContextMenu menu = vBoxFactory.buildContextMenu(selCount, allImage, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
                         menu.show(vBox, event.getScreenX(), event.getScreenY());
+                        imageContextMenu = menu;
                     });
                     callback.accept(vBox);
                 },
@@ -297,10 +306,18 @@ public class MainController {
                 file,
                 vBox -> Platform.runLater(() -> {
                     vBox.setOnContextMenuRequested(event -> {
+                        // 先关闭所有菜单
+                        if (imageContextMenu != null && imageContextMenu.isShowing()) {
+                            imageContextMenu.hide();
+                        }
+                        if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                            blankContextMenu.hide();
+                        }
                         int selCount = selectedVBoxes.size();
                         boolean allImage = allSelectedAreImages();
                         ContextMenu menu = vBoxFactory.buildContextMenu(selCount, allImage, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
                         menu.show(vBox, event.getScreenX(), event.getScreenY());
+                        imageContextMenu = menu;
                     });
                     imageFlowPane.getChildren().add(vBox);
                     FlowPane.setMargin(vBox, new Insets(5));
@@ -319,6 +336,12 @@ public class MainController {
                 this::renameSelected,
                 this::pasteFiles
         );
+                // 点击空白处关闭图片右键菜单
+                imageFlowPane.setOnMousePressed(event -> {
+                    if (imageContextMenu != null && imageContextMenu.isShowing()) {
+                        imageContextMenu.hide();
+                    }
+                });
     }
 
     //初始化FlowPane默认提示
