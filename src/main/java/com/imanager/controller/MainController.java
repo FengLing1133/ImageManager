@@ -478,7 +478,7 @@ public class MainController {
             imageView.setPreserveRatio(true);
             imageView.setSmooth(true);
             imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
-            Label nameLabel = new Label(file.getName());
+            Label nameLabel = new Label(truncateFileName(file.getName(), 18));
             nameLabel.setMaxWidth(THUMB_SIZE);
             nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
             nameLabel.setWrapText(true);
@@ -533,7 +533,7 @@ public class MainController {
             imageView.setPreserveRatio(true);
             imageView.setSmooth(true);
             imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
-            Label nameLabel = new Label(file.getName());
+            Label nameLabel = new Label(truncateFileName(file.getName(), 18));
             nameLabel.setMaxWidth(THUMB_SIZE);
             nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
             nameLabel.setWrapText(true);
@@ -608,7 +608,7 @@ public class MainController {
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
         imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
-        Label nameLabel = new Label(file.getName());
+        Label nameLabel = new Label(truncateFileName(file.getName(), 18));
         nameLabel.setMaxWidth(THUMB_SIZE);
         nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
         nameLabel.setWrapText(true);
@@ -690,7 +690,7 @@ public class MainController {
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
 
-        Label nameLabel = new Label(displayName);
+        Label nameLabel = new Label(truncateFileName(displayName, 18));
         nameLabel.setMaxWidth(THUMB_SIZE);
         nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center; -fx-font-weight: bold;");
         nameLabel.setWrapText(true);
@@ -925,7 +925,7 @@ public class MainController {
                     File newFile = new File(file.getParent(), newNameWithExt);
                     if (file.renameTo(newFile)) {
                         vBoxToFile.put(vBox, newFile);
-                        ((Label) vBox.getChildren().get(1)).setText(newNameWithExt);
+                        ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newNameWithExt, 18));
                         allFiles.set(allFiles.indexOf(file), newFile);
                     } else {
                         showAlert(Alert.AlertType.ERROR, "重命名失败", "无法重命名文件");
@@ -982,7 +982,7 @@ public class MainController {
                                 File newFile = new File(file.getParent(), newName);
                                 if (file.renameTo(newFile)) {
                                     vBoxToFile.put(vBox, newFile);
-                                    ((Label) vBox.getChildren().get(1)).setText(newName);
+                                    ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newName, 18));
                                     allFiles.set(allFiles.indexOf(file), newFile);
                                 }
                             }
@@ -1024,6 +1024,16 @@ public class MainController {
             }
         }
         updateTipLabel();
+    }
+
+    //文件名过长省略工具方法
+    private String truncateFileName(String name, int maxLength) {
+        if (name == null || name.length() <= maxLength) return name;
+        int keep = maxLength - 3;
+        if (keep <= 0) return "...";
+        int prefix = keep / 2;
+        int suffix = keep - prefix;
+        return name.substring(0, prefix) + "..." + name.substring(name.length() - suffix);
     }
 
     //辅助方法：弹出提示框
