@@ -6,6 +6,7 @@ import com.imanager.util.AlterUtil;
 import com.imanager.util.VBoxFactory;
 import javafx.application.Platform;
 import javafx.animation.PauseTransition;
+import javafx.scene.layout.AnchorPane;
 import javafx.util.Duration;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -27,10 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 public class MainController {
-    // 空白处右键菜单引用
-    private ContextMenu blankContextMenu = null;
 
-    // 与 FXML 中的 fx:id 绑定
     @FXML
     private TreeView<String> dirTreeView;
 
@@ -45,6 +43,10 @@ public class MainController {
 
     @FXML
     private TextField pathField;
+
+    @FXML
+    private AnchorPane imageAnchorPane; // 新增的FXML注入
+
     private File currentDir;//记录当前选中的目录
     private DirectoryTreeService directoryTreeService;
     private final FileService fileService = new FileService();
@@ -54,7 +56,7 @@ public class MainController {
     private final List<File> copiedFiles = new ArrayList<>();
     private static final String NORMAL_STYLE = "-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;";
     private static final String SELECTED_STYLE = "-fx-border-color: #2196f3; -fx-border-width: 2px; -fx-background-color: #e3f2fd; -fx-alignment: center;";
-
+    private ContextMenu blankContextMenu = null;
 
     // 目录历史栈，用于返回和撤销操作
     private final Stack<File> dirHistoryStack = new Stack<>();
@@ -70,11 +72,21 @@ public class MainController {
         initFlowPaneHint();
         //初始化目录树(加载本地文件系统)
         directoryTreeService.initDirectoryTree();
-        // 强制 FlowPane 的宽度等于 ScrollPane 视口的宽度
-        imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> imageFlowPane.setPrefWidth(newBounds.getWidth()));
+        // 让FlowPane宽度始终等于ScrollPane视口宽度，实现铺满
+        imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+            imageFlowPane.setPrefWidth(newBounds.getWidth());
+            //imageFlowPane.setPrefHeight(newBounds.getHeight());
+        });
+
+        // 让AnchorPane铺满ScrollPane可视区域，保证空白区可右键
+        imageScrollPane.viewportBoundsProperty().addListener((obs, oldVal, newVal) -> {
+            imageAnchorPane.setPrefHeight(newVal.getHeight());
+            imageAnchorPane.setPrefWidth(newVal.getWidth());
+        });
 
         // 空白处右键菜单：仅粘贴可用，其他项禁用。
         imageFlowPane.setOnContextMenuRequested(event -> {
+            // 只在点击FlowPane空白处时弹出
             if (event.getTarget() != imageFlowPane) {
                 return;
             }
@@ -87,6 +99,32 @@ public class MainController {
             blankContextMenu = vBoxFactory.buildContextMenu(0, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
             blankContextMenu.show(imageFlowPane, event.getScreenX(), event.getScreenY());
             event.consume();
+        });
+
+        // 监听ScrollPane右键，点在空白区域时弹出菜单
+        imageScrollPane.setOnContextMenuRequested(event -> {
+            // 只在点在FlowPane以外的空白区域时弹出
+            if (event.getTarget() == imageScrollPane || event.getTarget() == imageScrollPane.getContent()) {
+                if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                    blankContextMenu.hide();
+                }
+                blankContextMenu = vBoxFactory.buildContextMenu(0, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
+                blankContextMenu.show(imageScrollPane, event.getScreenX(), event.getScreenY());
+                event.consume();
+            }
+        });
+
+        // AnchorPane空白区域右键弹出菜单
+        imageAnchorPane.setOnContextMenuRequested(event -> {
+            // 只在AnchorPane空白处（不是FlowPane的子节点）弹出
+            if (event.getTarget() == imageAnchorPane) {
+                if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                    blankContextMenu.hide();
+                }
+                blankContextMenu = vBoxFactory.buildContextMenu(0, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
+                blankContextMenu.show(imageAnchorPane, event.getScreenX(), event.getScreenY());
+                event.consume();
+            }
         });
 
         // 点击空白处关闭空白右键菜单
@@ -230,7 +268,8 @@ public class MainController {
                 vBox -> {
                     vBox.setOnContextMenuRequested(event -> {
                         int selCount = selectedVBoxes.size();
-                        ContextMenu menu = vBoxFactory.buildContextMenu(selCount, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
+                        boolean allImage = allSelectedAreImages();
+                        ContextMenu menu = vBoxFactory.buildContextMenu(selCount, allImage, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
                         menu.show(vBox, event.getScreenX(), event.getScreenY());
                     });
                     callback.accept(vBox);
@@ -259,7 +298,8 @@ public class MainController {
                 vBox -> Platform.runLater(() -> {
                     vBox.setOnContextMenuRequested(event -> {
                         int selCount = selectedVBoxes.size();
-                        ContextMenu menu = vBoxFactory.buildContextMenu(selCount, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
+                        boolean allImage = allSelectedAreImages();
+                        ContextMenu menu = vBoxFactory.buildContextMenu(selCount, allImage, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
                         menu.show(vBox, event.getScreenX(), event.getScreenY());
                     });
                     imageFlowPane.getChildren().add(vBox);
@@ -333,12 +373,22 @@ public class MainController {
 
     @FXML
     private void clickBlank(javafx.scene.input.MouseEvent event) {
-        if (event.getTarget() != imageFlowPane || event.getButton() != MouseButton.PRIMARY) {
+        // 支持左键清空选中，右键弹出空白菜单
+        if (event.getTarget() != imageFlowPane) {
             return;
         }
-        selectedVBoxes.forEach(v -> v.setStyle(NORMAL_STYLE));
-        selectedVBoxes.clear();
-        updateTipLabel();
+        if (event.getButton() == MouseButton.PRIMARY) {
+            selectedVBoxes.forEach(v -> v.setStyle(NORMAL_STYLE));
+            selectedVBoxes.clear();
+            updateTipLabel();
+        } else if (event.getButton() == MouseButton.SECONDARY) {
+            if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                blankContextMenu.hide();
+            }
+            blankContextMenu = vBoxFactory.buildContextMenu(0, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
+            blankContextMenu.show(imageFlowPane, event.getScreenX(), event.getScreenY());
+            event.consume();
+        }
     }
 
     // 返回上一级目录
@@ -384,6 +434,16 @@ public class MainController {
     // 判断是否为图片文件
     private boolean isImageFile(File file) {
         return fileService.isImageFile(file);
+    }
+
+    // 判断当前选中集合是否全为图片
+    private boolean allSelectedAreImages() {
+        if (selectedVBoxes.isEmpty()) return false;
+        for (VBox vbox : selectedVBoxes) {
+            File file = vBoxToFile.get(vbox);
+            if (file == null || !isImageFile(file)) return false;
+        }
+        return true;
     }
 
     // 更新提示信息

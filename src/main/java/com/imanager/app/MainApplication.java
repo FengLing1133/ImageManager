@@ -8,7 +8,6 @@ import javafx.stage.Stage;
 
 public class MainApplication extends Application {
 
-    // 全局保存FXMLLoader实例，避免重复创建
     private FXMLLoader fxmlLoader;
 
     @Override

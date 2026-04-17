@@ -340,4 +340,93 @@ public class VBoxFactory {
         menu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
         return menu;
     }
+
+    /**
+     * 构建右键菜单，支持根据选中项类型动态禁用项。
+     * @param selectedCount 选中数量
+     * @param allImage 是否全为图片
+     * @param onDelete 删除回调
+     * @param onCopy 复制回调
+     * @param onRename 重命名回调
+     * @param onPaste 粘贴回调
+     * @return ContextMenu
+     */
+    public ContextMenu buildContextMenu(int selectedCount, boolean allImage, Runnable onDelete, Runnable onCopy, Runnable onRename, Runnable onPaste) {
+        ContextMenu menu = new ContextMenu();
+        MenuItem deleteItem = new MenuItem("删除");
+        deleteItem.setOnAction(e -> { if (onDelete != null) onDelete.run(); });
+        MenuItem copyItem = new MenuItem("复制");
+        copyItem.setOnAction(e -> { if (onCopy != null) onCopy.run(); });
+        MenuItem renameItem = new MenuItem("重命名");
+        renameItem.setOnAction(e -> { if (onRename != null) onRename.run(); });
+        MenuItem pasteItem = new MenuItem("粘贴");
+        pasteItem.setOnAction(e -> { if (onPaste != null) onPaste.run(); });
+        if (selectedCount == 1) {
+            // 单选全部可用
+            deleteItem.setDisable(false);
+            copyItem.setDisable(false);
+            renameItem.setDisable(false);
+            pasteItem.setDisable(false);
+        } else if (selectedCount > 1) {
+            // 多选时仅全为图片才可用
+            deleteItem.setDisable(!allImage);
+            copyItem.setDisable(!allImage);
+            renameItem.setDisable(true);
+            pasteItem.setDisable(false);
+        } else {
+            // 空白或异常
+            deleteItem.setDisable(true);
+            copyItem.setDisable(true);
+            renameItem.setDisable(true);
+            pasteItem.setDisable(false);
+        }
+        menu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
+        return menu;
+    }
+
+    // 优化选择逻辑：右键点击已选项不改变多选集合，右键未选项则切换为单选
+    private void setupContextMenuAndSelection(VBox vBox, File file, Set<VBox> selectedVBoxes, Map<VBox, File> vBoxToFile, String normalStyle, String selectedStyle, Runnable updateTipLabel, Runnable onDoubleClick, Runnable onDelete, Runnable onCopy, Runnable onRename, Runnable onPaste) {
+        vBox.setOnContextMenuRequested(event -> {
+            boolean alreadySelected = selectedVBoxes.contains(vBox);
+            if (!alreadySelected) {
+                selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
+                selectedVBoxes.clear();
+                selectedVBoxes.add(vBox);
+                vBox.setStyle(selectedStyle);
+                if (updateTipLabel != null) updateTipLabel.run();
+            }
+            event.consume();
+        });
+        vBox.setOnMousePressed(event -> {
+            if (event.getButton() != MouseButton.PRIMARY && event.getButton() != MouseButton.SECONDARY) {
+                return;
+            }
+            if (event.getButton() == MouseButton.SECONDARY) {
+                return;
+            }
+            boolean ctrlMultiSelect = event.isControlDown() && event.getButton() == MouseButton.PRIMARY;
+            if (ctrlMultiSelect) {
+                if (selectedVBoxes.contains(vBox)) {
+                    selectedVBoxes.remove(vBox);
+                    vBox.setStyle(normalStyle);
+                } else {
+                    selectedVBoxes.add(vBox);
+                    vBox.setStyle(selectedStyle);
+                }
+            } else {
+                selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
+                selectedVBoxes.clear();
+                selectedVBoxes.add(vBox);
+                vBox.setStyle(selectedStyle);
+            }
+            if (updateTipLabel != null) updateTipLabel.run();
+            event.consume();
+        });
+        vBox.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
+                if (onDoubleClick != null) onDoubleClick.run();
+                event.consume();
+            }
+        });
+    }
 }
