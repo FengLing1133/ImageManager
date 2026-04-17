@@ -54,6 +54,8 @@ public class MainController {
     private static final String NORMAL_STYLE = "-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;";
     private static final String SELECTED_STYLE = "-fx-border-color: #2196f3; -fx-border-width: 2px; -fx-background-color: #e3f2fd; -fx-alignment: center;";
 
+    // 目录历史栈，用于返回和撤销操作
+    private final Stack<File> dirHistoryStack = new Stack<>();
 
     //程序启动后初始化
     @FXML
@@ -781,6 +783,7 @@ public class MainController {
     @FXML
     public void onBack() {
         if (currentDir != null && currentDir.getParentFile() != null) {
+            dirHistoryStack.push(currentDir); // 将当前目录压入历史栈
             currentDir = currentDir.getParentFile();
             loadImagesToFlowPane(currentDir);
             expandAndSelectInTree(currentDir.getAbsolutePath());
@@ -790,7 +793,13 @@ public class MainController {
     // 撤销操作（如无撤销功能可先留空或弹窗提示）
     @FXML
     public void onUndo() {
-        showAlert(Alert.AlertType.INFORMATION, "提示", "暂未实现撤销功能");
+        if (!dirHistoryStack.isEmpty()) {
+            currentDir = dirHistoryStack.pop();
+            loadImagesToFlowPane(currentDir);
+            expandAndSelectInTree(currentDir.getAbsolutePath());
+        } else {
+            showAlert(Alert.AlertType.INFORMATION, "提示", "无可撤销的操作");
+        }
     }
 
     // 判断是否为图片文件
