@@ -44,6 +44,10 @@ public class SlideShowController {
         playTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> nextImage()));
         playTimeline.setCycleCount(Timeline.INDEFINITE);
 
+        // 监听stackPane尺寸变化，自动适应图片
+        stackPane.widthProperty().addListener((obs, oldVal, newVal) -> fitImageToWindow());
+        stackPane.heightProperty().addListener((obs, oldVal, newVal) -> fitImageToWindow());
+
         stackPane.setOnScroll(event -> {
             if (slideImageView.getImage() == null) return;
             double delta = event.getDeltaY();
@@ -110,20 +114,22 @@ public class SlideShowController {
 
         double windowWidth = stackPane.getWidth();
         double windowHeight = stackPane.getHeight();
-
         if (windowWidth <= 0 || windowHeight <= 0) return;
 
         double padding = 40.0;
         double availableWidth = Math.max(windowWidth - padding, 1.0);
         double availableHeight = Math.max(windowHeight - padding, 1.0);
 
-        double scaleX = availableWidth / image.getWidth();
-        double scaleY = availableHeight / image.getHeight();
-        baseScale = Math.max(Math.min(scaleX, scaleY), 0.01);
+        double imgWidth = image.getWidth();
+        double imgHeight = image.getHeight();
+
+        // 只缩小不放大
+        double scale = Math.min(1.0, Math.min(availableWidth / imgWidth, availableHeight / imgHeight));
+        baseScale = scale;
         zoomScale = 1.0;
 
-        slideImageView.setFitWidth(image.getWidth() * baseScale);
-        slideImageView.setFitHeight(image.getHeight() * baseScale);
+        slideImageView.setFitWidth(imgWidth * scale);
+        slideImageView.setFitHeight(imgHeight * scale);
         // 重置平移
         slideImageView.setTranslateX(0);
         slideImageView.setTranslateY(0);

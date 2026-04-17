@@ -763,6 +763,8 @@ public class MainController {
             Stage slideStage = new Stage();
             slideStage.setTitle("幻灯片播放");
             slideStage.setScene(new javafx.scene.Scene(slideRoot, 1000, 700));
+            slideStage.setMinWidth(420); // 设置最小宽度
+            slideStage.setMinHeight(340); // 设置最小高度
             slideStage.initOwner((Stage) dirTreeView.getScene().getWindow());//绑定父窗口
             slideStage.centerOnScreen();//居中显示
             slideStage.show();
@@ -847,6 +849,8 @@ public class MainController {
             Stage slideStage = new Stage();
             slideStage.setTitle("幻灯片播放");
             slideStage.setScene(new javafx.scene.Scene(slideRoot, 1000, 700));
+            slideStage.setMinWidth(420); // 设置最小宽度
+            slideStage.setMinHeight(340); // 设置最小高度
             slideStage.initOwner((Stage) dirTreeView.getScene().getWindow());
             slideStage.centerOnScreen();
             slideStage.show();
