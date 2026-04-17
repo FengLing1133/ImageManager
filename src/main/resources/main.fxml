@@ -6,6 +6,7 @@
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.TreeView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.FlowPane?>
@@ -15,16 +16,14 @@
 
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1200.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.imanager.controller.MainController">
    <top>
-      <HBox maxWidth="1200.0" prefHeight="50.0" prefWidth="1200.0" spacing="10.0" BorderPane.alignment="CENTER_RIGHT">
-         <opaqueInsets>
-            <Insets />
-         </opaqueInsets>
+      <HBox spacing="10.0" alignment="CENTER_LEFT" style="-fx-background-color: #e6f0fa;" prefHeight="50.0">
          <padding>
             <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
          </padding>
          <children>
-            <Pane minWidth="1100.0" prefHeight="200.0" prefWidth="1100.0" style="-fx-background-color: transparent;" />
-            <Button fx:id="btnPlay" mnemonicParsing="false" onAction="#openSlideShow" prefHeight="50.0" prefWidth="75.0" text="Play" />
+            <Button fx:id="btnBack" text="←" onAction="#onBack" prefWidth="40.0"/>
+            <Button fx:id="btnUndo" text="⟲" onAction="#onUndo" prefWidth="40.0"/>
+            <TextField fx:id="pathField" text="" promptText="路径..." style="-fx-background-color: #ffffff; -fx-padding: 0 10 0 10;" HBox.hgrow="ALWAYS" prefWidth="800.0"/>
          </children>
       </HBox>
    </top>
@@ -61,13 +60,23 @@
       </SplitPane>
    </center>
    <bottom>
-      <Label fx:id="tipLabel" text="Welcome to Image Manager" BorderPane.alignment="CENTER_LEFT">
-         <font>
-            <Font size="14.0" />
-         </font>
-         <padding>
-            <Insets left="10.0" />
-         </padding>
-      </Label>
+      <BorderPane prefHeight="40.0" style="-fx-background-color: transparent;">
+         <left>
+            <Label fx:id="tipLabel" text="Welcome to Image Manager" BorderPane.alignment="CENTER_LEFT">
+               <font>
+                  <Font size="14.0" />
+               </font>
+               <padding>
+                  <Insets left="10.0" />
+               </padding>
+            </Label>
+         </left>
+         <right>
+            <HBox spacing="10.0" alignment="CENTER_RIGHT">
+               <Button fx:id="btnPlay" mnemonicParsing="false" onAction="#openSlideShow" prefHeight="30.0" prefWidth="75.0" text="Play" />
+               <!-- 可在此添加更多操作按钮 -->
+            </HBox>
+         </right>
+      </BorderPane>
    </bottom>
 </BorderPane>

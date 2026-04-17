@@ -14,10 +14,6 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.paint.Color;
-import javafx.geometry.Bounds;
-import javafx.scene.Node;
 
 import java.io.File;
 import java.net.URL;
@@ -129,9 +125,6 @@ public class MainController {
             });
 
     private List<File> allFiles = new ArrayList<>();
-    private int batchSize = 50;
-    private int currentLoadedCount = 0;
-    private boolean isLoading = false;
 
     //统一缩略图尺寸
     private static final int THUMB_SIZE = 120;
@@ -782,6 +775,22 @@ public class MainController {
         selectedVBoxes.forEach(v -> v.setStyle(NORMAL_STYLE));
         selectedVBoxes.clear();
         updateTipLabel();
+    }
+
+    // 返回上一级目录
+    @FXML
+    public void onBack() {
+        if (currentDir != null && currentDir.getParentFile() != null) {
+            currentDir = currentDir.getParentFile();
+            loadImagesToFlowPane(currentDir);
+            expandAndSelectInTree(currentDir.getAbsolutePath());
+        }
+    }
+
+    // 撤销操作（如无撤销功能可先留空或弹窗提示）
+    @FXML
+    public void onUndo() {
+        showAlert(Alert.AlertType.INFORMATION, "提示", "暂未实现撤销功能");
     }
 
     // 判断是否为图片文件

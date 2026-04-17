@@ -1,4 +1,4 @@
-package com.imanager;
+package com.imanager.app;
 
 import com.imanager.controller.MainController;
 import javafx.application.Application;

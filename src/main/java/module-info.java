@@ -4,5 +4,6 @@ module com.imanager {
     requires javafx.graphics;
 
     opens com.imanager.controller to javafx.fxml;
-    exports com.imanager;
+    exports com.imanager.app;
+    exports com.imanager.controller;
 }
