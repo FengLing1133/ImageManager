@@ -5,6 +5,8 @@ import com.imanager.service.FileService;
 import com.imanager.util.AlterUtil;
 import com.imanager.util.VBoxFactory;
 import javafx.application.Platform;
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -15,6 +17,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.image.Image;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.input.MouseButton;
 import javafx.stage.Stage;
 import java.io.File;
 import java.net.URL;
@@ -24,6 +27,8 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 public class MainController {
+    // 空白处右键菜单引用
+    private ContextMenu blankContextMenu = null;
 
     // 与 FXML 中的 fx:id 绑定
     @FXML
@@ -50,6 +55,7 @@ public class MainController {
     private static final String NORMAL_STYLE = "-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;";
     private static final String SELECTED_STYLE = "-fx-border-color: #2196f3; -fx-border-width: 2px; -fx-background-color: #e3f2fd; -fx-alignment: center;";
 
+
     // 目录历史栈，用于返回和撤销操作
     private final Stack<File> dirHistoryStack = new Stack<>();
 
@@ -66,6 +72,29 @@ public class MainController {
         directoryTreeService.initDirectoryTree();
         // 强制 FlowPane 的宽度等于 ScrollPane 视口的宽度
         imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> imageFlowPane.setPrefWidth(newBounds.getWidth()));
+
+        // 空白处右键菜单：仅粘贴可用，其他项禁用。
+        imageFlowPane.setOnContextMenuRequested(event -> {
+            if (event.getTarget() != imageFlowPane) {
+                return;
+            }
+            selectedVBoxes.forEach(v -> v.setStyle(NORMAL_STYLE));
+            selectedVBoxes.clear();
+            updateTipLabel();
+            if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                blankContextMenu.hide();
+            }
+            blankContextMenu = vBoxFactory.buildContextMenu(0, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
+            blankContextMenu.show(imageFlowPane, event.getScreenX(), event.getScreenY());
+            event.consume();
+        });
+
+        // 点击空白处关闭空白右键菜单
+        imageFlowPane.setOnMousePressed(event -> {
+            if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                blankContextMenu.hide();
+            }
+        });
     }
 
     // 统一处理目录切换和图片刷新
@@ -116,11 +145,12 @@ public class MainController {
             } else {
                 pathField.setStyle("-fx-background-color: #ffe6e6;");
                 pathField.setText("路径无效");
-                Platform.runLater(() -> {
-                    try { Thread.sleep(1000); } catch (Exception ignored) {}
+                PauseTransition pause = new PauseTransition(Duration.seconds(1));
+                pause.setOnFinished(e -> {
                     if (currentDir != null) pathField.setText(currentDir.getAbsolutePath());
                     pathField.setStyle("-fx-background-color: #ffffff;");
                 });
+                pause.play();
             }
         });
     }
@@ -197,7 +227,14 @@ public class MainController {
     private void createVBoxAsync(File file, Consumer<VBox> callback) {
         vBoxFactory.createVBoxAsync(
                 file,
-                callback,
+                vBox -> {
+                    vBox.setOnContextMenuRequested(event -> {
+                        int selCount = selectedVBoxes.size();
+                        ContextMenu menu = vBoxFactory.buildContextMenu(selCount, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
+                        menu.show(vBox, event.getScreenX(), event.getScreenY());
+                    });
+                    callback.accept(vBox);
+                },
                 selectedVBoxes,
                 vBoxToFile,
                 NORMAL_STYLE,
@@ -219,7 +256,15 @@ public class MainController {
     private void createImageVBoxAsync(File file, Consumer<VBox> callback) {
         vBoxFactory.createImageVBoxAsync(
                 file,
-                callback,
+                vBox -> Platform.runLater(() -> {
+                    vBox.setOnContextMenuRequested(event -> {
+                        int selCount = selectedVBoxes.size();
+                        ContextMenu menu = vBoxFactory.buildContextMenu(selCount, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
+                        menu.show(vBox, event.getScreenX(), event.getScreenY());
+                    });
+                    imageFlowPane.getChildren().add(vBox);
+                    FlowPane.setMargin(vBox, new Insets(5));
+                }),
                 imageCache,
                 imageExecutor,
                 THUMB_SIZE,
@@ -287,7 +332,10 @@ public class MainController {
     }
 
     @FXML
-    private void clickBlank() {
+    private void clickBlank(javafx.scene.input.MouseEvent event) {
+        if (event.getTarget() != imageFlowPane || event.getButton() != MouseButton.PRIMARY) {
+            return;
+        }
         selectedVBoxes.forEach(v -> v.setStyle(NORMAL_STYLE));
         selectedVBoxes.clear();
         updateTipLabel();
@@ -296,11 +344,28 @@ public class MainController {
     // 返回上一级目录
     @FXML
     public void onBack() {
-        if (currentDir != null && currentDir.getParentFile() != null) {
-            dirHistoryStack.push(currentDir); // 将当前目录压入历史栈
-            currentDir = currentDir.getParentFile();
-            loadImagesToFlowPane(currentDir);
-            directoryTreeService.expandAndSelectInTree(currentDir.getAbsolutePath());
+        if (currentDir != null) {
+            File parent = currentDir.getParentFile();
+            if (parent != null) {
+                dirHistoryStack.push(currentDir); // 将当前目录压入历史栈
+                currentDir = parent;
+                loadImagesToFlowPane(currentDir);
+                directoryTreeService.expandAndSelectInTree(currentDir.getAbsolutePath());
+            } else {
+                // 已经是根目录，回到初始界面
+                currentDir = null;
+                allFiles.clear();
+                selectedVBoxes.clear();
+                vBoxToFile.clear();
+                Platform.runLater(() -> {
+                    imageFlowPane.getChildren().clear();
+                    initFlowPaneHint();
+                    pathField.setText(""); // 清空路径输入框
+                    updateTipLabel();
+                });
+                // 取消目录树选中
+                dirTreeView.getSelectionModel().clearSelection();
+            }
         }
     }
 
@@ -401,9 +466,12 @@ public class MainController {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "确认删除选中的文件？", ButtonType.YES, ButtonType.NO);
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.YES) {
-                fileService.deleteSelected(selectedVBoxes, vBoxToFile, allFiles, deletedVBoxes ->
+                // 复制一份，避免遍历时修改集合
+                Set<VBox> toDelete = new HashSet<>(selectedVBoxes);
+                fileService.deleteSelected(toDelete, vBoxToFile, allFiles, deletedVBoxes ->
                         Platform.runLater(() -> imageFlowPane.getChildren().removeAll(deletedVBoxes))
                 );
+                selectedVBoxes.removeAll(toDelete);
                 updateTipLabel();
             }
         });
@@ -418,112 +486,60 @@ public class MainController {
     // 重命名选中文件
     private void renameSelected() {
         if (selectedVBoxes.isEmpty()) return;
-        if (selectedVBoxes.size() == 1) {
-            // 单选：输入新文件名
-            VBox vBox = selectedVBoxes.iterator().next();
-            File file = vBoxToFile.get(vBox);
-            if (file == null) return;
-            TextInputDialog dialog = new TextInputDialog(file.getName());
-            dialog.setTitle("重命名");
-            dialog.setHeaderText("输入新文件名");
-            dialog.showAndWait().ifPresent(newName -> {
-                if (!newName.trim().isEmpty()) {
-                    String ext = "";
-                    int dotIndex = file.getName().lastIndexOf('.');
-                    if (dotIndex > 0) {
-                        ext = file.getName().substring(dotIndex);
-                    }
-                    // 新增：如果用户输入已带扩展名，则不再追加
-                    String newNameWithExt;
-                    if (newName.contains(".")) {
-                        newNameWithExt = newName;
-                    } else {
-                        newNameWithExt = newName + ext;
-                    }
-                    File newFile = new File(file.getParent(), newNameWithExt);
-                    if (fileService.renameFile(file, newNameWithExt)) {
-                        vBoxToFile.put(vBox, newFile);
-                        ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newNameWithExt));
-                        allFiles.set(allFiles.indexOf(file), newFile);
-                    } else {
-                        showAlert(Alert.AlertType.ERROR, "重命名失败", "无法重命名文件");
-                    }
-                }
-            });
-        } else {
-            // 多选：批量重命名
-            Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setTitle("批量重命名");
-            dialog.setHeaderText("输入批量重命名参数");
-
-            GridPane grid = new GridPane();
-            grid.setHgap(10);
-            grid.setVgap(10);
-            grid.setPadding(new Insets(20, 150, 10, 10));
-
-            TextField prefixField = new TextField();
-            prefixField.setPromptText("名称前缀");
-            TextField startNumField = new TextField("1");
-            startNumField.setPromptText("起始编号");
-            TextField digitsField = new TextField("4");
-            digitsField.setPromptText("编号位数");
-
-            grid.add(new Label("前缀:"), 0, 0);
-            grid.add(prefixField, 1, 0);
-            grid.add(new Label("起始编号:"), 0, 1);
-            grid.add(startNumField, 1, 1);
-            grid.add(new Label("位数:"), 0, 2);
-            grid.add(digitsField, 1, 2);
-
-            dialog.getDialogPane().setContent(grid);
-            dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-            dialog.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.OK) {
-                    try {
-                        String prefix = prefixField.getText().trim();
-                        int startNum = Integer.parseInt(startNumField.getText().trim());
-                        int digits = Integer.parseInt(digitsField.getText().trim());
-                        String format = "%0" + digits + "d";
-
-                        List<VBox> list = new ArrayList<>(selectedVBoxes);
-                        for (int i = 0; i < list.size(); i++) {
-                            VBox vBox = list.get(i);
-                            File file = vBoxToFile.get(vBox);
-                            if (file != null) {
-                                String ext = "";
-                                int dotIndex = file.getName().lastIndexOf('.');
-                                if (dotIndex > 0) {
-                                    ext = file.getName().substring(dotIndex);
-                                }
-                                String newName = prefix + String.format(format, startNum + i);
-                                // 新增：如果原文件有扩展名且 newName 没有扩展名，则追加
-                                String newNameWithExt;
-                                if (newName.contains(".")) {
-                                    newNameWithExt = newName;
-                                } else {
-                                    newNameWithExt = newName + ext;
-                                }
-                                File newFile = new File(file.getParent(), newNameWithExt);
-                                if (fileService.renameFile(file, newNameWithExt)) {
-                                    vBoxToFile.put(vBox, newFile);
-                                    ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newNameWithExt));
-                                    allFiles.set(allFiles.indexOf(file), newFile);
-                                }
-                            }
-                        }
-                    } catch (NumberFormatException e) {
-                        showAlert(Alert.AlertType.ERROR, "输入错误", "起始编号和位数必须是数字");
-                    }
-                }
-            });
+        if (selectedVBoxes.size() > 1) {
+            showAlert(Alert.AlertType.INFORMATION, "提示", "多选时不支持重命名");
+            return;
         }
+
+        // 单选：输入新文件名
+        VBox vBox = selectedVBoxes.iterator().next();
+        File file = vBoxToFile.get(vBox);
+        if (file == null) return;
+        TextInputDialog dialog = new TextInputDialog(file.getName());
+        dialog.setTitle("重命名");
+        dialog.setHeaderText("输入新文件名");
+        dialog.showAndWait().ifPresent(newName -> {
+            if (!newName.trim().isEmpty()) {
+                String ext = "";
+                int dotIndex = file.getName().lastIndexOf('.');
+                if (dotIndex > 0) {
+                    ext = file.getName().substring(dotIndex);
+                }
+                String newNameWithExt;
+                if (newName.contains(".")) {
+                    newNameWithExt = newName;
+                } else {
+                    newNameWithExt = newName + ext;
+                }
+                File newFile = new File(file.getParent(), newNameWithExt);
+                if (fileService.renameFile(file, newNameWithExt)) {
+                    vBoxToFile.put(vBox, newFile);
+                    ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newNameWithExt));
+                    allFiles.set(allFiles.indexOf(file), newFile);
+                } else {
+                    showAlert(Alert.AlertType.ERROR, "重命名失败", "无法重命名文件");
+                }
+            }
+        });
     }
 
     // 粘贴文件
     private void pasteFiles() {
-        fileService.pasteFiles(copiedFiles, currentDir);
+        List<File> pasted = fileService.pasteFiles(copiedFiles, currentDir);
         loadImagesToFlowPane(currentDir); // 粘贴后整体刷新图片预览区，保证新图片立即可见
+        // 粘贴后高亮新图片
+        Platform.runLater(() -> {
+            selectedVBoxes.clear();
+            vBoxToFile.forEach((vbox, file) -> {
+                if (pasted.contains(file)) {
+                    vbox.setStyle(SELECTED_STYLE);
+                    selectedVBoxes.add(vbox);
+                } else {
+                    vbox.setStyle(NORMAL_STYLE);
+                }
+            });
+            updateTipLabel();
+        });
     }
 
     //文件名过长省略工具方法

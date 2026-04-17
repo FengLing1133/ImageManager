@@ -7,6 +7,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 
@@ -86,13 +87,13 @@ public class VBoxFactory {
         }
         vBox.setOnContextMenuRequested(event -> contextMenu.show(vBox, event.getScreenX(), event.getScreenY()));
 
-        vBox.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 1) {
-                boolean ctrl = event.isControlDown();
-                if (!ctrl) {
-                    selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
-                    selectedVBoxes.clear();
-                }
+        // 左右键都可选中；仅 Ctrl+左键启用多选切换。
+        vBox.setOnMousePressed(event -> {
+            if (event.getButton() != MouseButton.PRIMARY && event.getButton() != MouseButton.SECONDARY) {
+                return;
+            }
+            boolean ctrlMultiSelect = event.isControlDown() && event.getButton() == MouseButton.PRIMARY;
+            if (ctrlMultiSelect) {
                 if (selectedVBoxes.contains(vBox)) {
                     selectedVBoxes.remove(vBox);
                     vBox.setStyle(normalStyle);
@@ -100,11 +101,21 @@ public class VBoxFactory {
                     selectedVBoxes.add(vBox);
                     vBox.setStyle(selectedStyle);
                 }
-                if (updateTipLabel != null) updateTipLabel.run();
-            } else if (event.getClickCount() == 2 && file.isDirectory()) {
-                if (onDoubleClickDir != null) onDoubleClickDir.run();
+            } else {
+                selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
+                selectedVBoxes.clear();
+                selectedVBoxes.add(vBox);
+                vBox.setStyle(selectedStyle);
             }
+            if (updateTipLabel != null) updateTipLabel.run();
             event.consume();
+        });
+
+        vBox.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2 && file.isDirectory()) {
+                if (onDoubleClickDir != null) onDoubleClickDir.run();
+                event.consume();
+            }
         });
         vBoxToFile.put(vBox, file);
         callback.accept(vBox);
@@ -204,13 +215,13 @@ public class VBoxFactory {
         pasteItem.setOnAction(e -> { if (onPaste != null) onPaste.run(); });
         contextMenu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
         vBox.setOnContextMenuRequested(event -> contextMenu.show(vBox, event.getScreenX(), event.getScreenY()));
-        vBox.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 1) {
-                boolean ctrl = event.isControlDown();
-                if (!ctrl) {
-                    selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
-                    selectedVBoxes.clear();
-                }
+        // 左右键都可选中；仅 Ctrl+左键启用多选切换。
+        vBox.setOnMousePressed(event -> {
+            if (event.getButton() != MouseButton.PRIMARY && event.getButton() != MouseButton.SECONDARY) {
+                return;
+            }
+            boolean ctrlMultiSelect = event.isControlDown() && event.getButton() == MouseButton.PRIMARY;
+            if (ctrlMultiSelect) {
                 if (selectedVBoxes.contains(vBox)) {
                     selectedVBoxes.remove(vBox);
                     vBox.setStyle(normalStyle);
@@ -218,11 +229,21 @@ public class VBoxFactory {
                     selectedVBoxes.add(vBox);
                     vBox.setStyle(selectedStyle);
                 }
-                if (updateTipLabel != null) updateTipLabel.run();
-            } else if (event.getClickCount() == 2) {
-                if (onDoubleClickImage != null) onDoubleClickImage.run();
+            } else {
+                selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
+                selectedVBoxes.clear();
+                selectedVBoxes.add(vBox);
+                vBox.setStyle(selectedStyle);
             }
+            if (updateTipLabel != null) updateTipLabel.run();
             event.consume();
+        });
+
+        vBox.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
+                if (onDoubleClickImage != null) onDoubleClickImage.run();
+                event.consume();
+            }
         });
     }
 
@@ -284,5 +305,39 @@ public class VBoxFactory {
         int prefix = keep / 2;
         int suffix = keep - prefix;
         return name.substring(0, prefix) + "..." + name.substring(name.length() - suffix);
+    }
+
+    // 动态生成右键菜单
+    public ContextMenu buildContextMenu(int selectedCount, Runnable onDelete, Runnable onCopy, Runnable onRename, Runnable onPaste) {
+        ContextMenu menu = new ContextMenu();
+        MenuItem deleteItem = new MenuItem("删除");
+        deleteItem.setOnAction(e -> { if (onDelete != null) onDelete.run(); });
+        MenuItem copyItem = new MenuItem("复制");
+        copyItem.setOnAction(e -> { if (onCopy != null) onCopy.run(); });
+        MenuItem renameItem = new MenuItem("重命名");
+        renameItem.setOnAction(e -> { if (onRename != null) onRename.run(); });
+        MenuItem pasteItem = new MenuItem("粘贴");
+        pasteItem.setOnAction(e -> { if (onPaste != null) onPaste.run(); });
+        if (selectedCount == 1) {
+            // 单选全部可用
+            deleteItem.setDisable(false);
+            copyItem.setDisable(false);
+            renameItem.setDisable(false);
+            pasteItem.setDisable(false);
+        } else if (selectedCount > 1) {
+            // 多选时重命名禁用
+            deleteItem.setDisable(false);
+            copyItem.setDisable(false);
+            renameItem.setDisable(true);
+            pasteItem.setDisable(false);
+        } else {
+            // 空白或异常
+            deleteItem.setDisable(true);
+            copyItem.setDisable(true);
+            renameItem.setDisable(true);
+            pasteItem.setDisable(false);
+        }
+        menu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
+        return menu;
     }
 }
