@@ -44,7 +44,7 @@ public class MainController {
     private TextField pathField;
 
     @FXML
-    private AnchorPane imageAnchorPane; // 新增的FXML注入
+    private AnchorPane imageAnchorPane;
 
     private File currentDir;//记录当前选中的目录
     private DirectoryTreeService directoryTreeService;
