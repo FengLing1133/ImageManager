@@ -1,6 +1,10 @@
 package com.imanager.controller;
 
 
+import com.imanager.service.DirectoryTreeService;
+import com.imanager.service.FileService;
+import com.imanager.util.AlterUtil;
+import com.imanager.util.VBoxFactory;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -8,7 +12,6 @@ import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTreeCell;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.image.Image;
 import javafx.scene.layout.GridPane;
@@ -17,7 +20,6 @@ import javafx.stage.Stage;
 
 import java.io.File;
 import java.net.URL;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,13 +44,9 @@ public class MainController {
     private TextField pathField;
 
     private File currentDir;//记录当前选中的目录
-
-    //目录节点加载状态缓存
-    private final Map<TreeItem<String>, String> treeItemStatus = new HashMap<>();
-    // 状态常量
-    private static final String STATUS_UNLOADED = "unloaded";   // 未加载
-    private static final String STATUS_LOADING = "loading";     // 加载中
-    private static final String STATUS_LOADED = "loaded";       // 已加载
+    private DirectoryTreeService directoryTreeService;
+    private final FileService fileService = new FileService();
+    private final VBoxFactory vBoxFactory = new VBoxFactory();
 
     // 新增字段
     private final Set<VBox> selectedVBoxes = new HashSet<>();
@@ -63,14 +61,35 @@ public class MainController {
     //程序启动后初始化
     @FXML
     public void initialize() {
-        //自定义CellFactory，让点击节点文本也能触发展开/折叠
+        directoryTreeService = new DirectoryTreeService(dirTreeView);
+        setupDirTreeCellFactory();
+        setupDirTreeSelectionListener();
+        setupPathFieldListener();
+        // 初始化FlowPane默认提示
+        initFlowPaneHint();
+        //初始化目录树(加载本地文件系统)
+        directoryTreeService.initDirectoryTree();
+        // 强制 FlowPane 的宽度等于 ScrollPane 视口的宽度
+        imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> imageFlowPane.setPrefWidth(newBounds.getWidth()));
+    }
+
+    // 统一处理目录切换和图片刷新
+    private void updateCurrentDirAndRefresh(File dir) {
+        if (dir != null && dir.isDirectory()) {
+            currentDir = dir;
+            pathField.setText(dir.getAbsolutePath());
+            loadImagesToFlowPane(dir);
+            directoryTreeService.expandAndSelectInTree(dir.getAbsolutePath());
+        }
+    }
+
+    // 拆分事件绑定
+    private void setupDirTreeCellFactory() {
         dirTreeView.setCellFactory(tv -> {
             TreeCell<String> cell = new TextFieldTreeCell<>();
-            //点击节点文本也能触发展开/折叠
             cell.setOnMouseClicked(event -> {
                 if (event.getClickCount() == 1 && cell.getTreeItem() != null) {
                     TreeItem<String> item = cell.getTreeItem();
-                    //仅切换非根节点(避免点击"我的电脑"触发展开)
                     if (!item.getValue().equals("我的电脑")) {
                         item.setExpanded(!item.isExpanded());
                     }
@@ -78,33 +97,28 @@ public class MainController {
             });
             return cell;
         });
-        dirTreeView.setPrefWidth(250); // 固定目录树宽度，避免布局抖动
+        dirTreeView.setPrefWidth(250);
+    }
 
-        //选中目录触发图片加载
+    private void setupDirTreeSelectionListener() {
         dirTreeView.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
             if (newItem != null) {
-                // 拼接完整路径：从根节点逐级拼接
-                String fullPath = getFullPath(newItem);
+                String fullPath = directoryTreeService.getFullPath(newItem);
                 File selectedDir = new File(fullPath);
-                if (selectedDir.isDirectory()) {
-                    currentDir = selectedDir;
-                    loadImagesToFlowPane(selectedDir);
-                }
+                updateCurrentDirAndRefresh(selectedDir);
             }
         });
+    }
 
-        // 路径框初始化与事件绑定
+    private void setupPathFieldListener() {
         if (currentDir != null) {
             pathField.setText(currentDir.getAbsolutePath());
         }
-        // 监听路径框回车事件
         pathField.setOnAction(event -> {
             String inputPath = pathField.getText();
             File file = new File(inputPath);
             if (file.exists() && file.isDirectory()) {
-                currentDir = file;
-                loadImagesToFlowPane(file);
-                expandAndSelectInTree(file.getAbsolutePath());
+                updateCurrentDirAndRefresh(file);
             } else {
                 pathField.setStyle("-fx-background-color: #ffe6e6;");
                 pathField.setText("路径无效");
@@ -115,31 +129,7 @@ public class MainController {
                 });
             }
         });
-        // 目录切换时同步路径框
-        dirTreeView.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
-            if (newItem != null) {
-                String fullPath = getFullPath(newItem);
-                File selectedDir = new File(fullPath);
-                if (selectedDir.isDirectory()) {
-                    pathField.setText(selectedDir.getAbsolutePath());
-                }
-            }
-        });
-        // 初始化FlowPane默认提示
-        initFlowPaneHint();
-        //初始化目录树(加载本地文件系统)
-        initDirectoryTree();
-        // 强制 FlowPane 的宽度等于 ScrollPane 视口的宽度
-        imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> imageFlowPane.setPrefWidth(newBounds.getWidth()));
     }
-
-    //目录加载线程池
-    private final ExecutorService dirExecutor = Executors.newFixedThreadPool(2, runnable -> {
-        Thread thread = new Thread(runnable);
-        thread.setDaemon(true);//线程设置为守护线程，程序退出时自动关闭
-        thread.setName("Directory Loader");
-        return thread;
-    });
 
     //图片加载线程池
     private final ExecutorService imageExecutor = Executors.newFixedThreadPool(3, runnable -> {
@@ -162,259 +152,7 @@ public class MainController {
 
     //统一缩略图尺寸
     private static final int THUMB_SIZE = 120;
-
-    //初始化全盘符目录树（支持扫描全硬盘）
-    private void initDirectoryTree() {
-        //创建根节点(显示“我的电脑”)
-        TreeItem<String> computerRoot = new TreeItem<>("我的电脑");
-        computerRoot.setExpanded(true);
-        dirTreeView.setRoot(computerRoot);
-        dirTreeView.setShowRoot(true);//显示根节点
-
-        // 获取所有磁盘盘符（C:\、D:\、E:\等）
-        File[] roots = File.listRoots();
-        if (roots == null) roots = new File[0];
-
-        //为每个盘符创建节点
-        for (File root : roots) {
-            TreeItem<String> driveItem = new TreeItem<>(root.getAbsolutePath());
-            driveItem.setExpanded(false);//盘符默认关闭，避免一次性加载系统目录
-            //初始化状态：未加载
-            treeItemStatus.put(driveItem, STATUS_UNLOADED);
-            computerRoot.getChildren().add(driveItem);
-
-            //盘符展开是加载子目录
-            driveItem.expandedProperty().addListener((obs, oldVal, newVal) -> {
-                if (newVal && STATUS_UNLOADED.equals(treeItemStatus.get(driveItem))) {
-                    loadChildrenAsync(driveItem, root, 1);
-                }
-            });
-        }
-    }
-
-    //异步加载子目录
-    private void loadChildrenAsync(TreeItem<String> parentItem, File parentFile, int depth) {
-        //校验状态：已加载/加载中则直接返回
-        String status = treeItemStatus.getOrDefault(parentItem, STATUS_UNLOADED);
-        if (STATUS_LOADING.equals(status) || STATUS_LOADED.equals(status)) {
-            return;
-        }
-        //标记为加载中
-        treeItemStatus.put(parentItem, STATUS_LOADING);
-        if (depth > 5) {
-            treeItemStatus.put(parentItem, STATUS_LOADED);
-            return;
-        }
-        System.out.println("正在加载目录：" + parentFile.getAbsolutePath());
-        if (!parentItem.isExpanded()) {
-            parentItem.setExpanded(true);
-        }
-        dirExecutor.submit(() -> {
-            File[] childFiles = parentFile.listFiles(File::isDirectory);
-            if (childFiles == null) {
-                System.out.println("❌ 读取目录失败（权限不足）：" + parentFile.getAbsolutePath());
-                Platform.runLater(() -> {
-                    TreeItem<String> emptyItem = new TreeItem<>("无访问权限");
-                    parentItem.getChildren().add(emptyItem);
-                });
-                treeItemStatus.put(parentItem, STATUS_LOADED);
-                return;
-            }
-            //过滤掉系统目录
-            List<File> filteredFiles = Arrays.stream(childFiles)
-                    .filter(file -> {
-                        String name = file.getName();
-                        return !name.equals("System Volume Information")
-                                && !name.equals("$Recycle.Bin")
-                                && !name.equals("Windows")
-                                && !name.equals("Program Files")
-                                && !file.isHidden();
-                    })
-                    .sorted((f1, f2) -> f1.getName().compareToIgnoreCase(f2.getName()))
-                    .toList();
-            System.out.println("🔍 加载 " + parentFile.getName() + " 的子目录数量：" + filteredFiles.size());
-            Platform.runLater(() -> {
-                if (filteredFiles.isEmpty()) {
-                    TreeItem<String> emptyItem = new TreeItem<>("无子目录");
-                    parentItem.getChildren().add(emptyItem);
-                } else {
-                    for (File childFile : filteredFiles) {
-                        TreeItem<String> childItem = new TreeItem<>(childFile.getName());
-                        treeItemStatus.put(childItem, STATUS_UNLOADED);
-                        childItem.expandedProperty().addListener((obs, oldVal, newVal) -> {
-                            if (newVal && STATUS_UNLOADED.equals(treeItemStatus.get(childItem))) {
-                                loadChildrenAsync(childItem, childFile, depth + 1);
-                            }
-                        });
-                        parentItem.getChildren().add(childItem);
-                    }
-                }
-                treeItemStatus.put(parentItem, STATUS_LOADED);
-            });
-        });
-    }
-
-    //递归拼接TreeItem的完整路径
-    private String getFullPath(TreeItem<String> item) {
-        if (item.getParent() == null || item.getParent().getValue().equals("我的电脑")) {
-            return item.getValue();
-        }
-        String parentPath = getFullPath(item.getParent());
-        String fullPath = parentPath + File.separator + item.getValue();
-        return fullPath.replace("\\\\", "\\");
-    }
-
-    //展开并选中目录树中的指定路径
-    private void expandAndSelectInTree(String targetPath) {
-        System.out.println("\n========== 开始同步目录树 ==========");
-        System.out.println("目标路径: " + targetPath);
-
-        TreeItem<String> root = dirTreeView.getRoot();
-        if (root == null) {
-            System.out.println("✗ 目录树根节点为null");
-            return;
-        }
-
-        System.out.println("根节点: " + root.getValue());
-        System.out.println("根节点子节点数: " + root.getChildren().size());
-
-        Platform.runLater(() -> expandPathStepByStep(root, targetPath, 0));
-    }
-
-    //逐级展开路径（修复根节点处理）
-    private void expandPathStepByStep(TreeItem<String> currentItem, String targetPath, int depth) {
-        String indent = "  ".repeat(depth);
-        String currentPath = getFullPath(currentItem);
-
-        System.out.println(indent + "【深度" + depth + "】当前节点: " + currentItem.getValue());
-        System.out.println(indent + "  当前路径: " + currentPath);
-        System.out.println(indent + "  目标路径: " + targetPath);
-        System.out.println(indent + "  子节点数: " + currentItem.getChildren().size());
-
-        if (depth > 15) {
-            System.out.println(indent + "✗ 展开层级过深，停止");
-            return;
-        }
-
-        if (targetPath.equals(currentPath)) {
-            currentItem.setExpanded(true);
-            dirTreeView.getSelectionModel().select(currentItem);
-            System.out.println(indent + "✓✓✓ 找到目标！已选中");
-            System.out.println("========== 同步完成 ==========\n");
-            return;
-        }
-
-        if (currentItem.getValue().equals("我的电脑")) {
-            System.out.println(indent + "  根节点特殊处理，查找盘符...");
-            String driveLetter = targetPath.substring(0, 3);
-            System.out.println(indent + "  提取盘符: " + driveLetter);
-
-            TreeItem<String> driveItem = findChildByName(currentItem, driveLetter);
-            if (driveItem == null) {
-                System.out.println(indent + "✗ 未找到盘符: " + driveLetter);
-                return;
-            }
-            System.out.println(indent + "✓ 找到盘符节点，进入下一级");
-
-            if (!driveItem.isExpanded()) {
-                driveItem.setExpanded(true);
-                Platform.runLater(() -> {
-                    try {
-                        Thread.sleep(300);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                    Platform.runLater(() -> expandPathStepByStep(driveItem, targetPath, depth + 1));
-                });
-            } else {
-                expandPathStepByStep(driveItem, targetPath, depth + 1);
-            }
-            return;
-        }
-
-        if (!targetPath.startsWith(currentPath)) {
-            System.out.println(indent + "✗ 目标路径不在当前节点下，停止");
-            return;
-        }
-
-        String separator = File.separator.equals("\\") ? "\\\\" : File.separator;
-        String remaining = targetPath.substring(currentPath.length());
-        String[] parts = remaining.split(separator);
-
-        System.out.println(indent + "  剩余路径片段: " + Arrays.toString(parts));
-
-        parts = Arrays.stream(parts).filter(s -> !s.isEmpty()).toArray(String[]::new);
-
-        if (parts.length == 0) {
-            System.out.println(indent + "✗ 路径片段为空");
-            return;
-        }
-
-        String nextName = parts[0];
-        System.out.println(indent + "  查找下一节点: " + nextName);
-
-        if (currentItem.getChildren().isEmpty()) {
-            System.out.println(indent + "⏳ 子节点为空，等待300ms后重试...");
-            Platform.runLater(() -> {
-                try {
-                    Thread.sleep(300);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                Platform.runLater(() -> {
-                    System.out.println(indent + "↻ 重试深度" + depth);
-                    expandPathStepByStep(currentItem, targetPath, depth);
-                });
-            });
-            return;
-        }
-
-        System.out.println(indent + "  当前所有子节点: " +
-                currentItem.getChildren().stream()
-                        .map(TreeItem::getValue)
-                        .reduce((a, b) -> a + ", " + b)
-                        .orElse("无"));
-
-        TreeItem<String> nextChild = findChildByName(currentItem, nextName);
-
-        if (nextChild == null) {
-            System.out.println(indent + "✗✗ 未找到节点: " + nextName);
-            System.out.println("========== 同步失败 ==========\n");
-            return;
-        }
-
-        System.out.println(indent + "✓ 找到节点: " + nextName);
-
-        if (!nextChild.isExpanded()) {
-            System.out.println(indent + "→ 展开节点并等待200ms...");
-            nextChild.setExpanded(true);
-
-            Platform.runLater(() -> {
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                Platform.runLater(() -> {
-                    System.out.println(indent + "↻ 继续��度" + (depth + 1));
-                    expandPathStepByStep(nextChild, targetPath, depth + 1);
-                });
-            });
-        } else {
-            System.out.println(indent + "⚡ 节点已展开，直接进入");
-            expandPathStepByStep(nextChild, targetPath, depth + 1);
-        }
-    }
-
-    //根据名称查找子节点
-    private TreeItem<String> findChildByName(TreeItem<String> parent, String name) {
-        for (TreeItem<String> child : parent.getChildren()) {
-            if (child.getValue().equals(name)) {
-                return child;
-            }
-        }
-        return null;
-    }
+    private static final int FILE_NAME_MAX_LENGTH = 18;
 
     // 加载图片和文件夹到FlowPane
     private void loadImagesToFlowPane(File dir) {
@@ -442,7 +180,7 @@ public class MainController {
 
         List<File> imageFiles = new ArrayList<>();
         for (File file : allFiles) {
-            if (!file.isDirectory() && isImageFile(file)) {
+            if (!file.isDirectory() && fileService.isImageFile(file)) {
                 imageFiles.add(file);
             } else {
                 createVBoxAsync(file, vBox -> Platform.runLater(() -> {
@@ -463,196 +201,45 @@ public class MainController {
 
     //异步创建VBox（图标+名称+点击事件）
     private void createVBoxAsync(File file, Consumer<VBox> callback) {
-        if (file.isDirectory()) {
-            ImageView imageView = new ImageView();
-            try {
-                var stream = getClass().getResourceAsStream("/folder-icon.png");
-                if (stream != null) {
-                    imageView = new ImageView(new Image(stream));
-                }
-            } catch (Exception e) {
-                imageView = new ImageView();
-            }
-            imageView.setFitWidth(THUMB_SIZE);
-            imageView.setFitHeight(THUMB_SIZE);
-            imageView.setPreserveRatio(true);
-            imageView.setSmooth(true);
-            imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
-            Label nameLabel = new Label(truncateFileName(file.getName(), 18));
-            nameLabel.setMaxWidth(THUMB_SIZE);
-            nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
-            nameLabel.setWrapText(true);
-            VBox vBox = new VBox(5, imageView, nameLabel);
-            vBox.setPadding(new Insets(5));
-            vBox.setStyle(NORMAL_STYLE);
-
-            ContextMenu contextMenu = new ContextMenu();
-            MenuItem pasteItem = new MenuItem("粘贴");
-            pasteItem.setOnAction(e -> pasteFiles());
-            contextMenu.getItems().add(pasteItem);
-            vBox.setOnContextMenuRequested(event -> {
-                contextMenu.show(vBox, event.getScreenX(), event.getScreenY());
-            });
-
-            vBox.setOnMouseClicked(event -> {
-                if (event.getClickCount() == 1) {
-                    boolean ctrl = event.isControlDown();
-                    if (!ctrl) {
-                        selectedVBoxes.forEach(v -> v.setStyle(NORMAL_STYLE));
-                        selectedVBoxes.clear();
-                    }
-                    if (selectedVBoxes.contains(vBox)) {
-                        selectedVBoxes.remove(vBox);
-                        vBox.setStyle(NORMAL_STYLE);
-                    } else {
-                        selectedVBoxes.add(vBox);
-                        vBox.setStyle(SELECTED_STYLE);
-                    }
-                    updateTipLabel();
-                } else if (event.getClickCount() == 2 && file.isDirectory()) {
+        vBoxFactory.createVBoxAsync(
+                file,
+                callback,
+                selectedVBoxes,
+                vBoxToFile,
+                NORMAL_STYLE,
+                SELECTED_STYLE,
+                this::updateTipLabel,
+                () -> {
                     currentDir = file;
                     loadImagesToFlowPane(file);
-                    expandAndSelectInTree(file.getAbsolutePath());
-                }
-                event.consume();
-            });
-            vBoxToFile.put(vBox, file);
-            callback.accept(vBox);
-        } else {
-            ImageView imageView = new ImageView();
-            try {
-                var stream = getClass().getResourceAsStream("/file-icon.png");
-                if (stream != null) {
-                    imageView = new ImageView(new Image(stream));
-                }
-            } catch (Exception e) {
-                imageView = new ImageView();
-            }
-            imageView.setFitWidth(THUMB_SIZE);
-            imageView.setFitHeight(THUMB_SIZE);
-            imageView.setPreserveRatio(true);
-            imageView.setSmooth(true);
-            imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
-            Label nameLabel = new Label(truncateFileName(file.getName(), 18));
-            nameLabel.setMaxWidth(THUMB_SIZE);
-            nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
-            nameLabel.setWrapText(true);
-            VBox vBox = new VBox(5, imageView, nameLabel);
-            vBox.setPadding(new Insets(5));
-            vBox.setStyle(NORMAL_STYLE);
-
-            ContextMenu contextMenu = new ContextMenu();
-            MenuItem deleteItem = new MenuItem("删除");
-            deleteItem.setOnAction(e -> deleteSelected());
-            MenuItem copyItem = new MenuItem("复制");
-            copyItem.setOnAction(e -> copySelected());
-            MenuItem renameItem = new MenuItem("重命名");
-            renameItem.setOnAction(e -> renameSelected());
-            MenuItem pasteItem = new MenuItem("粘贴");
-            pasteItem.setOnAction(e -> pasteFiles());
-            contextMenu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
-            vBox.setOnContextMenuRequested(event -> {
-                contextMenu.show(vBox, event.getScreenX(), event.getScreenY());
-            });
-
-            vBox.setOnMouseClicked(event -> {
-                if (event.getClickCount() == 1) {
-                    boolean ctrl = event.isControlDown();
-                    if (!ctrl) {
-                        selectedVBoxes.forEach(v -> v.setStyle(NORMAL_STYLE));
-                        selectedVBoxes.clear();
-                    }
-                    if (selectedVBoxes.contains(vBox)) {
-                        selectedVBoxes.remove(vBox);
-                        vBox.setStyle(NORMAL_STYLE);
-                    } else {
-                        selectedVBoxes.add(vBox);
-                        vBox.setStyle(SELECTED_STYLE);
-                    }
-                    updateTipLabel();
-                }
-                event.consume();
-            });
-            vBoxToFile.put(vBox, file);
-            callback.accept(vBox);
-        }
+                    directoryTreeService.expandAndSelectInTree(file.getAbsolutePath());
+                },
+                this::pasteFiles,
+                this::deleteSelected,
+                this::copySelected,
+                this::renameSelected
+        );
     }
 
     //异步创建图片VBox（后台加载完成后显示）
     private void createImageVBoxAsync(File file, Consumer<VBox> callback) {
-        String filePath = file.getAbsolutePath();
-
-        if (imageCache.containsKey(filePath)) {
-            Image image = imageCache.get(filePath);
-            createImageVBox(file, image, callback);
-            return;
-        }
-
-        imageExecutor.submit(() -> {
-            try {
-                Image img = new Image(file.toURI().toString(), THUMB_SIZE, THUMB_SIZE, true, true, false);
-                imageCache.put(filePath, img);
-
-                Platform.runLater(() -> createImageVBox(file, img, callback));
-            } catch (Exception e) {
-                System.out.println("⚠️ 图片加载失败：" + file.getName());
-            }
-        });
-    }
-
-    //创建图片VBox
-    private void createImageVBox(File file, Image image, Consumer<VBox> callback) {
-        ImageView imageView = new ImageView(image);
-        imageView.setFitWidth(THUMB_SIZE);
-        imageView.setFitHeight(THUMB_SIZE);
-        imageView.setPreserveRatio(true);
-        imageView.setSmooth(true);
-        imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
-        Label nameLabel = new Label(truncateFileName(file.getName(), 18));
-        nameLabel.setMaxWidth(THUMB_SIZE);
-        nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
-        nameLabel.setWrapText(true);
-        VBox vBox = new VBox(5, imageView, nameLabel);
-        vBox.setPadding(new Insets(5));
-        vBox.setStyle(NORMAL_STYLE);
-        setupImageVBox(vBox, file);
-        vBoxToFile.put(vBox, file);
-        callback.accept(vBox);
-    }
-
-    //配置图片VBox的事件和菜单
-    private void setupImageVBox(VBox vBox, File file) {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem deleteItem = new MenuItem("删除");
-        deleteItem.setOnAction(e -> deleteSelected());
-        MenuItem copyItem = new MenuItem("复制");
-        copyItem.setOnAction(e -> copySelected());
-        MenuItem renameItem = new MenuItem("重命名");
-        renameItem.setOnAction(e -> renameSelected());
-        MenuItem pasteItem = new MenuItem("粘贴");
-        pasteItem.setOnAction(e -> pasteFiles());
-        contextMenu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
-        vBox.setOnContextMenuRequested(event -> contextMenu.show(vBox, event.getScreenX(), event.getScreenY()));
-        vBox.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 1) {
-                boolean ctrl = event.isControlDown();
-                if (!ctrl) {
-                    selectedVBoxes.forEach(v -> v.setStyle(NORMAL_STYLE));
-                    selectedVBoxes.clear();
-                }
-                if (selectedVBoxes.contains(vBox)) {
-                    selectedVBoxes.remove(vBox);
-                    vBox.setStyle(NORMAL_STYLE);
-                } else {
-                    selectedVBoxes.add(vBox);
-                    vBox.setStyle(SELECTED_STYLE);
-                }
-                updateTipLabel();
-            } else if (event.getClickCount() == 2) {
-                openSlideShowForImage(file);
-            }
-            event.consume();
-        });
+        vBoxFactory.createImageVBoxAsync(
+                file,
+                callback,
+                imageCache,
+                imageExecutor,
+                THUMB_SIZE,
+                NORMAL_STYLE,
+                SELECTED_STYLE,
+                selectedVBoxes,
+                vBoxToFile,
+                this::updateTipLabel,
+                () -> openSlideShowForImage(file),
+                this::deleteSelected,
+                this::copySelected,
+                this::renameSelected,
+                this::pasteFiles
+        );
     }
 
     //初始化FlowPane默认提示
@@ -676,89 +263,33 @@ public class MainController {
 
     //创建快捷入口VBox
     private void createShortcutVBox(File targetDir, String displayName) {
-        ImageView imageView = new ImageView();
-        try {
-            var stream = getClass().getResourceAsStream("/folder-icon.png");
-            if (stream != null) {
-                imageView = new ImageView(new Image(stream));
-            }
-        } catch (Exception e) {
-            imageView = new ImageView();
-        }
-        imageView.setFitWidth(THUMB_SIZE);
-        imageView.setFitHeight(THUMB_SIZE);
-        imageView.setPreserveRatio(true);
-        imageView.setSmooth(true);
-
-        Label nameLabel = new Label(truncateFileName(displayName, 18));
-        nameLabel.setMaxWidth(THUMB_SIZE);
-        nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center; -fx-font-weight: bold;");
-        nameLabel.setWrapText(true);
-
-        VBox vBox = new VBox(5, imageView, nameLabel);
-        vBox.setPadding(new Insets(5));
-        vBox.setStyle(NORMAL_STYLE);
-
-        vBox.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 1) {
-                selectedVBoxes.forEach(v -> v.setStyle(NORMAL_STYLE));
-                selectedVBoxes.clear();
-                selectedVBoxes.add(vBox);
-                vBox.setStyle(SELECTED_STYLE);
-            } else if (event.getClickCount() == 2) {
-                currentDir = targetDir;
-                loadImagesToFlowPane(targetDir);
-                if (dirTreeView.getRoot() != null) {
-                    expandAndSelectInTree(targetDir.getAbsolutePath());
+        vBoxFactory.createShortcutVBox(
+                displayName,
+                THUMB_SIZE,
+                NORMAL_STYLE,
+                SELECTED_STYLE,
+                selectedVBoxes,
+                imageFlowPane,
+                this::updateTipLabel,
+                () -> {
+                    currentDir = targetDir;
+                    loadImagesToFlowPane(targetDir);
+                    if (dirTreeView.getRoot() != null) {
+                        directoryTreeService.expandAndSelectInTree(targetDir.getAbsolutePath());
+                    }
                 }
-            }
-            event.consume();
-        });
-
-        imageFlowPane.getChildren().add(vBox);
-        FlowPane.setMargin(vBox, new Insets(5));
+        );
     }
 
     //点击Play按钮，打开幻灯片界面
     @FXML
     private void openSlideShow() {
-        try {
-            URL fxmlUrl = getClass().getResource("/slideShow.fxml");
-            List<String> imagePaths = new ArrayList<>();
-            if (currentDir != null) {
-                File[] files = currentDir.listFiles();
-                if (files != null) {
-                    for (File file : files) {
-                        if (file.isFile() && isImageFile(file)) {
-                            imagePaths.add(file.getAbsolutePath());
-                        }
-                    }
-                } else {
-                    System.out.println("[调试] files为null");
-                }
-                System.out.println("[调试] 收集到图片数量: " + imagePaths.size());
-            } else {
-                showAlert(Alert.AlertType.WARNING, "未选择目录", "请先在左侧选择包含图片的文件夹");
-                return;
-            }
-            FXMLLoader loader = new FXMLLoader(fxmlUrl);
-            Parent slideRoot = loader.load();
-            SlideShowController slideController = loader.getController();
-            slideController.setImagePaths(imagePaths);
-            Stage slideStage = new Stage();
-            slideStage.setTitle("幻灯片播放");
-            slideStage.setScene(new javafx.scene.Scene(slideRoot, 1000, 700));
-            slideStage.setMinWidth(420);
-            slideStage.setMinHeight(340);
-            slideStage.initOwner(dirTreeView.getScene().getWindow());
-            slideStage.centerOnScreen();
-            slideStage.show();
-        } catch (Exception e) {
-            showAlert(Alert.AlertType.ERROR, "打开幻灯片失败",
-                    "错误信息：" + e.getMessage() + "\n" +
-                            "请检查slideShow.fxml是否合法或控制器是否正确");
-            System.err.println("打开幻灯片失败: " + e.getMessage());
+        List<String> imagePaths = getImagePathsInCurrentDir();
+        if (imagePaths.isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "未选择目录", "请先在左侧选择包含图片的文件夹");
+            return;
         }
+        showSlideShowWindow(imagePaths, 0);
     }
 
     @FXML
@@ -775,7 +306,7 @@ public class MainController {
             dirHistoryStack.push(currentDir); // 将当前目录压入历史栈
             currentDir = currentDir.getParentFile();
             loadImagesToFlowPane(currentDir);
-            expandAndSelectInTree(currentDir.getAbsolutePath());
+            directoryTreeService.expandAndSelectInTree(currentDir.getAbsolutePath());
         }
     }
 
@@ -785,7 +316,7 @@ public class MainController {
         if (!dirHistoryStack.isEmpty()) {
             currentDir = dirHistoryStack.pop();
             loadImagesToFlowPane(currentDir);
-            expandAndSelectInTree(currentDir.getAbsolutePath());
+            directoryTreeService.expandAndSelectInTree(currentDir.getAbsolutePath());
         } else {
             showAlert(Alert.AlertType.INFORMATION, "提示", "无可撤销的操作");
         }
@@ -793,10 +324,7 @@ public class MainController {
 
     // 判断是否为图片文件
     private boolean isImageFile(File file) {
-        if (!file.isFile()) return false;
-        String name = file.getName();
-        String lower = name.toLowerCase();
-        return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".gif") || lower.endsWith(".bmp");
+        return fileService.isImageFile(file);
     }
 
     // 更新提示信息
@@ -807,7 +335,7 @@ public class MainController {
         }
         long imageCount = allFiles.stream().filter(this::isImageFile).count();
         long totalSize = allFiles.stream().filter(File::isFile).mapToLong(File::length).sum();
-        String sizeStr = formatSize(totalSize);
+        String sizeStr = fileService.formatSize(totalSize);
         String selectedStr = selectedVBoxes.isEmpty() ? "" : " | 选中: " + selectedVBoxes.size();
         // 新增：选中图片总大小
         long selectedImageSize = selectedVBoxes.stream()
@@ -816,46 +344,48 @@ public class MainController {
                 .filter(this::isImageFile)
                 .mapToLong(File::length)
                 .sum();
-        String selectedSizeStr = (selectedVBoxes.isEmpty() || selectedImageSize == 0) ? "" : " | 选中图片总大小: " + formatSize(selectedImageSize);
+        String selectedSizeStr = (selectedVBoxes.isEmpty() || selectedImageSize == 0) ? "" : " | 选中图片总大小: " + fileService.formatSize(selectedImageSize);
         tipLabel.setText("目录: " + currentDir.getName() + " | 图片数量: " + imageCount + " | 总大小: " + sizeStr + selectedStr + selectedSizeStr);
-    }
-
-    // 格式化文件大小
-    private String formatSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        int exp = (int) (Math.log(bytes) / Math.log(1024));
-        String pre = "KMGTPE".charAt(exp - 1) + "";
-        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
     }
 
     // 双击图片打开幻灯片
     private void openSlideShowForImage(File imageFile) {
-        try {
-            URL fxmlUrl = getClass().getResource("/slideShow.fxml");
-            List<String> imagePaths = new ArrayList<>();
-            if (currentDir != null) {
-                File[] files = currentDir.listFiles();
-                if (files != null) {
-                    for (File file : files) {
-                        if (file.isFile() && isImageFile(file)) {
-                            imagePaths.add(file.getAbsolutePath());
-                        }
+        List<String> imagePaths = getImagePathsInCurrentDir();
+        if (imagePaths.isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "未找到图片", "当前目录中没有可播放的图片");
+            return;
+        }
+        int index = imagePaths.indexOf(imageFile.getAbsolutePath());
+        showSlideShowWindow(imagePaths, Math.max(index, 0));
+    }
+
+    // 抽取：获取当前目录下所有图片路径
+    private List<String> getImagePathsInCurrentDir() {
+        List<String> imagePaths = new ArrayList<>();
+        if (currentDir != null) {
+            File[] files = currentDir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isFile() && isImageFile(file)) {
+                        imagePaths.add(file.getAbsolutePath());
                     }
                 }
             }
-            Collections.sort(imagePaths);
-            if (imagePaths.isEmpty()) {
-                showAlert(Alert.AlertType.WARNING, "未找到图片",
-                        "当前目录中没有可播放的图片");
-                return;
-            }
+        }
+        Collections.sort(imagePaths);
+        return imagePaths;
+    }
+
+    // 抽取：统一打开幻灯片窗口
+    private void showSlideShowWindow(List<String> imagePaths, int startIndex) {
+        try {
+            URL fxmlUrl = getClass().getResource("/slideShow.fxml");
             FXMLLoader loader = new FXMLLoader(fxmlUrl);
             Parent slideRoot = loader.load();
             SlideShowController slideController = loader.getController();
             slideController.setImagePaths(imagePaths);
-            int index = imagePaths.indexOf(imageFile.getAbsolutePath());
-            if (index >= 0) {
-                slideController.setCurrentIndex(index);
+            if (startIndex > 0) {
+                slideController.setCurrentIndex(startIndex);
             }
             Stage slideStage = new Stage();
             slideStage.setTitle("幻灯片播放");
@@ -867,7 +397,7 @@ public class MainController {
             slideStage.show();
         } catch (Exception e) {
             showAlert(Alert.AlertType.ERROR, "打开幻灯片失败", e.getMessage());
-            System.err.println("打开幻灯片失败: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -877,16 +407,9 @@ public class MainController {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "确认删除选中的文件？", ButtonType.YES, ButtonType.NO);
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.YES) {
-                List<VBox> toRemove = new ArrayList<>(selectedVBoxes);
-                for (VBox vBox : toRemove) {
-                    File file = vBoxToFile.get(vBox);
-                    if (file != null && file.delete()) {
-                        imageFlowPane.getChildren().remove(vBox);
-                        selectedVBoxes.remove(vBox);
-                        vBoxToFile.remove(vBox);
-                        allFiles.remove(file);
-                    }
-                }
+                fileService.deleteSelected(selectedVBoxes, vBoxToFile, allFiles, deletedVBoxes ->
+                        Platform.runLater(() -> imageFlowPane.getChildren().removeAll(deletedVBoxes))
+                );
                 updateTipLabel();
             }
         });
@@ -894,13 +417,7 @@ public class MainController {
 
     // 复制选中文件
     private void copySelected() {
-        copiedFiles.clear();
-        for (VBox vBox : selectedVBoxes) {
-            File file = vBoxToFile.get(vBox);
-            if (file != null) {
-                copiedFiles.add(file);
-            }
-        }
+        fileService.copySelected(selectedVBoxes, vBoxToFile, copiedFiles);
     }
 
     // 重命名选中文件
@@ -923,9 +440,9 @@ public class MainController {
                     }
                     String newNameWithExt = newName + ext;
                     File newFile = new File(file.getParent(), newNameWithExt);
-                    if (file.renameTo(newFile)) {
+                    if (fileService.renameFile(file, newNameWithExt)) {
                         vBoxToFile.put(vBox, newFile);
-                        ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newNameWithExt, 18));
+                        ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newNameWithExt));
                         allFiles.set(allFiles.indexOf(file), newFile);
                     } else {
                         showAlert(Alert.AlertType.ERROR, "重命名失败", "无法重命名文件");
@@ -980,9 +497,9 @@ public class MainController {
                                 }
                                 String newName = prefix + String.format(format, startNum + i) + ext;
                                 File newFile = new File(file.getParent(), newName);
-                                if (file.renameTo(newFile)) {
+                                if (fileService.renameFile(file, newName)) {
                                     vBoxToFile.put(vBox, newFile);
-                                    ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newName, 18));
+                                    ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newName));
                                     allFiles.set(allFiles.indexOf(file), newFile);
                                 }
                             }
@@ -997,40 +514,21 @@ public class MainController {
 
     // 粘贴文件
     private void pasteFiles() {
-        if (copiedFiles.isEmpty() || currentDir == null) return;
-        for (File src : copiedFiles) {
-            try {
-                File dest = new File(currentDir, src.getName());
-                if (dest.exists()) {
-                    // 重命名
-                    String name = src.getName();
-                    String base = name.substring(0, name.lastIndexOf('.'));
-                    String ext = name.substring(name.lastIndexOf('.'));
-                    int count = 1;
-                    while (dest.exists()) {
-                        dest = new File(currentDir, base + "(" + count + ")" + ext);
-                        count++;
-                    }
-                }
-                Files.copy(src.toPath(), dest.toPath());
-                // 添加到FlowPane
-                allFiles.add(dest);
-                createVBoxAsync(dest, vBox -> Platform.runLater(() -> {
-                    imageFlowPane.getChildren().add(vBox);
-                    FlowPane.setMargin(vBox, new Insets(5));
-                }));
-            } catch (Exception e) {
-                showAlert(Alert.AlertType.ERROR, "粘贴失败", e.getMessage());
-            }
+        List<File> pastedFiles = fileService.pasteFiles(copiedFiles, currentDir);
+        for (File pastedFile : pastedFiles) {
+            allFiles.add(pastedFile);
+            createVBoxAsync(pastedFile, vBox -> Platform.runLater(() -> {
+                imageFlowPane.getChildren().add(vBox);
+                FlowPane.setMargin(vBox, new Insets(5));
+            }));
         }
         updateTipLabel();
     }
 
     //文件名过长省略工具方法
-    private String truncateFileName(String name, int maxLength) {
-        if (name == null || name.length() <= maxLength) return name;
-        int keep = maxLength - 3;
-        if (keep <= 0) return "...";
+    private String truncateFileName(String name) {
+        if (name == null || name.length() <= FILE_NAME_MAX_LENGTH) return name;
+        int keep = FILE_NAME_MAX_LENGTH - 3;
         int prefix = keep / 2;
         int suffix = keep - prefix;
         return name.substring(0, prefix) + "..." + name.substring(name.length() - suffix);
@@ -1038,20 +536,16 @@ public class MainController {
 
     //辅助方法：弹出提示框
     private void showAlert(Alert.AlertType type, String title, String content) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(type);
-            alert.setTitle(title);
-            alert.setHeaderText(null);
-            alert.setContentText(content);
-            alert.initOwner(dirTreeView.getScene().getWindow());
-            alert.showAndWait();
-        });
+        AlterUtil.showAlert(type, title, content, dirTreeView.getScene().getWindow());
     }
 
     //关闭所有线程池
     public void shutdown() {
-        dirExecutor.shutdown();
+        if (directoryTreeService != null) {
+            directoryTreeService.shutdown();
+        }
         imageExecutor.shutdown();
     }
 }
+
 
