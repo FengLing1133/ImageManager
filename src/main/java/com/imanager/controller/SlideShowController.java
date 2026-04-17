@@ -52,9 +52,9 @@ public class SlideShowController {
             if (slideImageView.getImage() == null) return;
             double delta = event.getDeltaY();
             if (delta > 0) {
-                zoomScale = Math.min(zoomScale * 1.15, 10.0);
+                zoomScale = Math.min(zoomScale * 1.05, 10.0);
             } else {
-                zoomScale = Math.max(zoomScale / 1.15, 0.1);
+                zoomScale = Math.max(zoomScale / 1.05, 0.1);
             }
             double finalScale = baseScale * zoomScale;
             slideImageView.setFitWidth(slideImageView.getImage().getWidth() * finalScale);
@@ -79,32 +79,6 @@ public class SlideShowController {
         });
         stackPane.setOnMouseReleased(event -> {
             // 可选：松开鼠标后可做边界限制
-        });
-    }
-
-    private void scheduleFitToWindow() {
-        Platform.runLater(() -> {
-            if (stackPane.getWidth() > 0 && stackPane.getHeight() > 0) {
-                fitImageToWindow();
-                return;
-            }
-
-            // Wait until first layout pass completes before fitting the image.
-            final javafx.beans.value.ChangeListener<Number>[] widthListener = new javafx.beans.value.ChangeListener[1];
-            final javafx.beans.value.ChangeListener<Number>[] heightListener = new javafx.beans.value.ChangeListener[1];
-
-            Runnable fitWhenReady = () -> {
-                if (stackPane.getWidth() > 0 && stackPane.getHeight() > 0) {
-                    fitImageToWindow();
-                    stackPane.widthProperty().removeListener(widthListener[0]);
-                    stackPane.heightProperty().removeListener(heightListener[0]);
-                }
-            };
-
-            widthListener[0] = (obs, oldVal, newVal) -> fitWhenReady.run();
-            heightListener[0] = (obs, oldVal, newVal) -> fitWhenReady.run();
-            stackPane.widthProperty().addListener(widthListener[0]);
-            stackPane.heightProperty().addListener(heightListener[0]);
         });
     }
 
@@ -200,8 +174,8 @@ public class SlideShowController {
     public void zoomIn() {
         if (playTimeline != null) playTimeline.stop();
         zoomScale = Math.min(zoomScale * 1.1, 5.0);
-        slideImageView.setFitWidth(slideImageView.getFitWidth() * 1.1);
-        slideImageView.setFitHeight(slideImageView.getFitHeight() * 1.1);
+        slideImageView.setFitWidth(slideImageView.getFitWidth() * 1.02);
+        slideImageView.setFitHeight(slideImageView.getFitHeight() * 1.02);
         // 缩放时不重置平移
     }
 
@@ -209,8 +183,8 @@ public class SlideShowController {
     public void zoomOut() {
         if (playTimeline != null) playTimeline.stop();
         zoomScale = Math.max(zoomScale / 1.1, 0.1);
-        slideImageView.setFitWidth(slideImageView.getFitWidth() / 1.1);
-        slideImageView.setFitHeight(slideImageView.getFitHeight() / 1.1);
+        slideImageView.setFitWidth(slideImageView.getFitWidth() / 1.02);
+        slideImageView.setFitHeight(slideImageView.getFitHeight() / 1.02);
         // 缩放时不重置平移
     }
 

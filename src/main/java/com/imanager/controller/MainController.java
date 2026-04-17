@@ -38,6 +38,9 @@ public class MainController {
     @FXML
     private Label tipLabel;
 
+    @FXML
+    private TextField pathField;
+
     private File currentDir;//记录当前选中的目录
 
     //目录节点加载状态缓存
@@ -90,11 +93,42 @@ public class MainController {
             }
         });
 
+        // 路径框初始化与事件绑定
+        if (currentDir != null) {
+            pathField.setText(currentDir.getAbsolutePath());
+        }
+        // 监听路径框回车事件
+        pathField.setOnAction(event -> {
+            String inputPath = pathField.getText();
+            File file = new File(inputPath);
+            if (file.exists() && file.isDirectory()) {
+                currentDir = file;
+                loadImagesToFlowPane(file);
+                expandAndSelectInTree(file.getAbsolutePath());
+            } else {
+                pathField.setStyle("-fx-background-color: #ffe6e6;");
+                pathField.setText("路径无效");
+                Platform.runLater(() -> {
+                    try { Thread.sleep(1000); } catch (Exception ignored) {}
+                    if (currentDir != null) pathField.setText(currentDir.getAbsolutePath());
+                    pathField.setStyle("-fx-background-color: #ffffff;");
+                });
+            }
+        });
+        // 目录切换时同步路径框
+        dirTreeView.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
+            if (newItem != null) {
+                String fullPath = getFullPath(newItem);
+                File selectedDir = new File(fullPath);
+                if (selectedDir.isDirectory()) {
+                    pathField.setText(selectedDir.getAbsolutePath());
+                }
+            }
+        });
         // 初始化FlowPane默认提示
         initFlowPaneHint();
         //初始化目录树(加载本地文件系统)
         initDirectoryTree();
-
         // 强制 FlowPane 的宽度等于 ScrollPane 视口的宽度
         imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> imageFlowPane.setPrefWidth(newBounds.getWidth()));
     }
@@ -144,7 +178,7 @@ public class MainController {
         //为每个盘符创建节点
         for (File root : roots) {
             TreeItem<String> driveItem = new TreeItem<>(root.getAbsolutePath());
-            driveItem.setExpanded(false);//盘符默认关闭，避���一次性加载系统目录
+            driveItem.setExpanded(false);//盘符默认关闭，避免一次性加载系统目录
             //初始化状态：未加载
             treeItemStatus.put(driveItem, STATUS_UNLOADED);
             computerRoot.getChildren().add(driveItem);
@@ -775,7 +809,15 @@ public class MainController {
         long totalSize = allFiles.stream().filter(File::isFile).mapToLong(File::length).sum();
         String sizeStr = formatSize(totalSize);
         String selectedStr = selectedVBoxes.isEmpty() ? "" : " | 选中: " + selectedVBoxes.size();
-        tipLabel.setText("目录: " + currentDir.getName() + " | 图片数量: " + imageCount + " | 总大小: " + sizeStr + selectedStr);
+        // 新增：选中图片总大小
+        long selectedImageSize = selectedVBoxes.stream()
+                .map(vBoxToFile::get)
+                .filter(Objects::nonNull)
+                .filter(this::isImageFile)
+                .mapToLong(File::length)
+                .sum();
+        String selectedSizeStr = (selectedVBoxes.isEmpty() || selectedImageSize == 0) ? "" : " | 选中图片总大小: " + formatSize(selectedImageSize);
+        tipLabel.setText("目录: " + currentDir.getName() + " | 图片数量: " + imageCount + " | 总大小: " + sizeStr + selectedStr + selectedSizeStr);
     }
 
     // 格式化文件大小
