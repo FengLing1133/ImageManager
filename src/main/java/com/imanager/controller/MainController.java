@@ -1,6 +1,5 @@
 package com.imanager.controller;
 
-
 import com.imanager.service.DirectoryTreeService;
 import com.imanager.service.FileService;
 import com.imanager.util.AlterUtil;
@@ -17,7 +16,6 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-
 import java.io.File;
 import java.net.URL;
 import java.util.*;
@@ -42,13 +40,10 @@ public class MainController {
 
     @FXML
     private TextField pathField;
-
     private File currentDir;//记录当前选中的目录
     private DirectoryTreeService directoryTreeService;
     private final FileService fileService = new FileService();
     private final VBoxFactory vBoxFactory = new VBoxFactory();
-
-    // 新增字段
     private final Set<VBox> selectedVBoxes = new HashSet<>();
     private final Map<VBox, File> vBoxToFile = new HashMap<>();
     private final List<File> copiedFiles = new ArrayList<>();
@@ -83,7 +78,6 @@ public class MainController {
         }
     }
 
-    // 拆分事件绑定
     private void setupDirTreeCellFactory() {
         dirTreeView.setCellFactory(tv -> {
             TreeCell<String> cell = new TextFieldTreeCell<>();
@@ -416,7 +410,8 @@ public class MainController {
     }
 
     // 复制选中文件
-    private void copySelected() {
+    @FXML
+    public void copySelected() {
         fileService.copySelected(selectedVBoxes, vBoxToFile, copiedFiles);
     }
 
@@ -438,7 +433,13 @@ public class MainController {
                     if (dotIndex > 0) {
                         ext = file.getName().substring(dotIndex);
                     }
-                    String newNameWithExt = newName + ext;
+                    // 新增：如果用户输入已带扩展名，则不再追加
+                    String newNameWithExt;
+                    if (newName.contains(".")) {
+                        newNameWithExt = newName;
+                    } else {
+                        newNameWithExt = newName + ext;
+                    }
                     File newFile = new File(file.getParent(), newNameWithExt);
                     if (fileService.renameFile(file, newNameWithExt)) {
                         vBoxToFile.put(vBox, newFile);
@@ -495,11 +496,18 @@ public class MainController {
                                 if (dotIndex > 0) {
                                     ext = file.getName().substring(dotIndex);
                                 }
-                                String newName = prefix + String.format(format, startNum + i) + ext;
-                                File newFile = new File(file.getParent(), newName);
-                                if (fileService.renameFile(file, newName)) {
+                                String newName = prefix + String.format(format, startNum + i);
+                                // 新增：如果原文件有扩展名且 newName 没有扩展名，则追加
+                                String newNameWithExt;
+                                if (newName.contains(".")) {
+                                    newNameWithExt = newName;
+                                } else {
+                                    newNameWithExt = newName + ext;
+                                }
+                                File newFile = new File(file.getParent(), newNameWithExt);
+                                if (fileService.renameFile(file, newNameWithExt)) {
                                     vBoxToFile.put(vBox, newFile);
-                                    ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newName));
+                                    ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newNameWithExt));
                                     allFiles.set(allFiles.indexOf(file), newFile);
                                 }
                             }
@@ -514,15 +522,8 @@ public class MainController {
 
     // 粘贴文件
     private void pasteFiles() {
-        List<File> pastedFiles = fileService.pasteFiles(copiedFiles, currentDir);
-        for (File pastedFile : pastedFiles) {
-            allFiles.add(pastedFile);
-            createVBoxAsync(pastedFile, vBox -> Platform.runLater(() -> {
-                imageFlowPane.getChildren().add(vBox);
-                FlowPane.setMargin(vBox, new Insets(5));
-            }));
-        }
-        updateTipLabel();
+        fileService.pasteFiles(copiedFiles, currentDir);
+        loadImagesToFlowPane(currentDir); // 粘贴后整体刷新图片预览区，保证新图片立即可见
     }
 
     //文件名过长省略工具方法
@@ -547,5 +548,4 @@ public class MainController {
         imageExecutor.shutdown();
     }
 }
-
 
