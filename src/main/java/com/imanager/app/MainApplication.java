@@ -14,7 +14,6 @@ public class MainApplication extends Application {
     public void start(Stage primaryStage) throws Exception {
         fxmlLoader = new FXMLLoader(getClass().getResource("/main.fxml"));
         Scene scene = new Scene(fxmlLoader.load());
-        // 加载全局CSS
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         primaryStage.setTitle("图片管理器");
         primaryStage.setScene(scene);

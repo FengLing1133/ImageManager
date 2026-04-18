@@ -15,14 +15,14 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 
-<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1200.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.imanager.controller.MainController">
+<BorderPane prefHeight="700.0" prefWidth="1030.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.imanager.controller.MainController">
    <top>
       <HBox spacing="10.0" alignment="CENTER_LEFT" style="-fx-background-color: #e6f0fa;" prefHeight="50.0">
          <padding>
             <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
          </padding>
          <children>
-            <Button fx:id="btnBack" onAction="#onBack" prefWidth="40.0" styleClass="primary-btn">
+            <Button fx:id="btnBack" onAction="#onBack" prefWidth="40.0" prefHeight="36.0" styleClass="primary-btn">
                 <graphic>
                     <ImageView fitWidth="20" fitHeight="20" preserveRatio="true">
                         <image>
@@ -31,7 +31,7 @@
                     </ImageView>
                 </graphic>
             </Button>
-            <Button fx:id="btnUndo" onAction="#onUndo" prefWidth="40.0" styleClass="primary-btn">
+            <Button fx:id="btnUndo" onAction="#onUndo" prefWidth="40.0" prefHeight="36.0" styleClass="primary-btn">
                 <graphic>
                     <ImageView fitWidth="20" fitHeight="20" preserveRatio="true">
                         <image>
@@ -40,31 +40,31 @@
                     </ImageView>
                 </graphic>
             </Button>
-            <TextField fx:id="pathField" text="" promptText="路径..." style="-fx-background-color: #ffffff; -fx-padding: 0 10 0 10;" HBox.hgrow="ALWAYS" prefWidth="800.0"/>
+            <TextField fx:id="pathField" text="" promptText="路径..." style="-fx-background-color: #ffffff; -fx-padding: 0 10 0 10; -fx-font-size: 18px;" HBox.hgrow="ALWAYS" prefWidth="800.0" prefHeight="36.0"/>
          </children>
       </HBox>
    </top>
    <center>
-      <SplitPane dividerPositions="0.25" layoutY="50.0" minHeight="400.0" minWidth="500.0" BorderPane.alignment="CENTER">
+      <SplitPane dividerPositions="0.22" layoutY="50.0" minHeight="400.0" minWidth="500.0" BorderPane.alignment="CENTER">
         <items>
-          <AnchorPane maxWidth="1.7976931348623157E308" minHeight="300.0" minWidth="160.0">
+          <AnchorPane prefHeight="500.0" prefWidth="180.0">
                <children>
-                  <ScrollPane fitToHeight="true" fitToWidth="true" maxWidth="1.7976931348623157E308" minHeight="290.0" minWidth="155.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                  <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="480.0" prefWidth="170.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                     <content>
-                      <AnchorPane maxWidth="1.7976931348623157E308" minHeight="280.0" minWidth="150.0">
+                      <AnchorPane prefHeight="470.0" prefWidth="160.0">
                            <children>
-                              <TreeView fx:id="dirTreeView" maxWidth="1.7976931348623157E308" minHeight="200.0" minWidth="150.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
+                              <TreeView fx:id="dirTreeView" prefHeight="400.0" prefWidth="150.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
                            </children>
                         </AnchorPane>
                     </content>
                   </ScrollPane>
                </children>
             </AnchorPane>
-          <AnchorPane maxWidth="1.7976931348623157E308" minHeight="300.0" minWidth="300.0">
+          <AnchorPane prefHeight="500.0" prefWidth="780.0">
                <children>
-                  <ScrollPane fx:id="imageScrollPane" hbarPolicy="NEVER" fitToWidth="false" fitToHeight="false" layoutX="194.0" layoutY="148.0" maxWidth="1.7976931348623157E308" minHeight="290.0" minWidth="295.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                  <ScrollPane fx:id="imageScrollPane" hbarPolicy="NEVER" fitToWidth="false" fitToHeight="false" layoutX="194.0" layoutY="148.0" prefHeight="480.0" prefWidth="770.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                      <content>
-                        <AnchorPane fx:id="imageAnchorPane" maxWidth="1.7976931348623157E308" minWidth="0.0">
+                        <AnchorPane fx:id="imageAnchorPane" prefWidth="0.0">
                            <children>
                               <FlowPane fx:id="imageFlowPane" hgap="10.0" vgap="10.0" onMouseClicked="#clickBlank">
                                  <padding>
@@ -93,7 +93,7 @@
             </Label>
          </left>
          <right>
-            <HBox spacing="10.0" alignment="CENTER_RIGHT">
+            <HBox spacing="10.0" alignment="CENTER_RIGHT" style="-fx-padding: 0 5 0 0;">
                <Button fx:id="btnPlay" mnemonicParsing="false" onAction="#openSlideShow" prefHeight="30.0" prefWidth="75.0" styleClass="primary-btn">
                 <graphic>
                     <ImageView fitWidth="18" fitHeight="18" preserveRatio="true">
