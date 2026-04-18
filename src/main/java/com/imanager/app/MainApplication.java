@@ -12,12 +12,15 @@ public class MainApplication extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        // 1. 初始化FXMLLoader并保存到全局
         fxmlLoader = new FXMLLoader(getClass().getResource("/main.fxml"));
+        Scene scene = new Scene(fxmlLoader.load());
+        // 加载全局CSS
+        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         primaryStage.setTitle("图片管理器");
-        primaryStage.setScene(new Scene(fxmlLoader.load()));
+        primaryStage.setScene(scene);
         primaryStage.show();
     }
+
 
     @Override
     public void stop() throws Exception {

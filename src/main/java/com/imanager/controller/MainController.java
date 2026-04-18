@@ -45,7 +45,6 @@ public class MainController {
 
     @FXML
     private AnchorPane imageAnchorPane;
-
     private File currentDir;//记录当前选中的目录
     private DirectoryTreeService directoryTreeService;
     private final FileService fileService = new FileService();
