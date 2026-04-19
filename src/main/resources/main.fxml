@@ -15,97 +15,116 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 
-<BorderPane prefHeight="700.0" prefWidth="1030.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.imanager.controller.MainController">
-   <top>
-      <HBox spacing="10.0" alignment="CENTER_LEFT" style="-fx-background-color: #e6f0fa;" prefHeight="50.0">
-         <padding>
-            <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
-         </padding>
-         <children>
-            <Button fx:id="btnBack" onAction="#onBack" prefWidth="40.0" prefHeight="36.0" styleClass="primary-btn">
-                <graphic>
-                    <ImageView fitWidth="20" fitHeight="20" preserveRatio="true">
-                        <image>
-                            <Image url="@icons/back.png" />
-                        </image>
-                    </ImageView>
-                </graphic>
-            </Button>
-            <Button fx:id="btnUndo" onAction="#onUndo" prefWidth="40.0" prefHeight="36.0" styleClass="primary-btn">
-                <graphic>
-                    <ImageView fitWidth="20" fitHeight="20" preserveRatio="true">
-                        <image>
-                            <Image url="@icons/forward.png" />
-                        </image>
-                    </ImageView>
-                </graphic>
-            </Button>
-            <TextField fx:id="pathField" text="" promptText="路径..." style="-fx-background-color: #ffffff; -fx-padding: 0 10 0 10; -fx-font-size: 18px;" HBox.hgrow="ALWAYS" prefWidth="800.0" prefHeight="36.0"/>
-         </children>
-      </HBox>
-   </top>
-   <center>
-      <SplitPane dividerPositions="0.22" layoutY="50.0" minHeight="400.0" minWidth="500.0" BorderPane.alignment="CENTER">
-        <items>
-          <AnchorPane prefHeight="500.0" prefWidth="180.0">
-               <children>
-                  <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="480.0" prefWidth="170.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                    <content>
-                      <AnchorPane prefHeight="470.0" prefWidth="160.0">
-                           <children>
-                              <TreeView fx:id="dirTreeView" prefHeight="400.0" prefWidth="150.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
-                           </children>
-                        </AnchorPane>
-                    </content>
-                  </ScrollPane>
-               </children>
-            </AnchorPane>
-          <AnchorPane prefHeight="500.0" prefWidth="780.0">
-               <children>
-                  <ScrollPane fx:id="imageScrollPane" hbarPolicy="NEVER" fitToWidth="false" fitToHeight="false" layoutX="194.0" layoutY="148.0" prefHeight="480.0" prefWidth="770.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                     <content>
-                        <AnchorPane fx:id="imageAnchorPane" prefWidth="0.0">
-                           <children>
-                              <FlowPane fx:id="imageFlowPane" hgap="10.0" vgap="10.0" onMouseClicked="#clickBlank">
-                                 <padding>
-                                    <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-                                 </padding>
-                              </FlowPane>
-                           </children>
-                        </AnchorPane>
-                     </content>
-                  </ScrollPane>
-               </children>
-            </AnchorPane>
-        </items>
-      </SplitPane>
-   </center>
-   <bottom>
-      <BorderPane prefHeight="40.0" style="-fx-background-color: transparent;">
-         <left>
-            <Label fx:id="tipLabel" text="Welcome to Image Manager" BorderPane.alignment="CENTER_LEFT">
-               <font>
-                  <Font size="14.0" />
-               </font>
-               <padding>
-                  <Insets left="10.0" />
-               </padding>
-            </Label>
-         </left>
-         <right>
-            <HBox spacing="10.0" alignment="CENTER_RIGHT" style="-fx-padding: 0 5 0 0;">
-               <Button fx:id="btnPlay" mnemonicParsing="false" onAction="#openSlideShow" prefHeight="30.0" prefWidth="75.0" styleClass="primary-btn">
-                <graphic>
-                    <ImageView fitWidth="18" fitHeight="18" preserveRatio="true">
-                        <image>
-                            <Image url="@icons/play.png" />
-                        </image>
-                    </ImageView>
-                </graphic>
-            </Button>
-               <!-- 可在此添加更多操作按钮 -->
-            </HBox>
-         </right>
-      </BorderPane>
-   </bottom>
+<BorderPane prefHeight="700.0" prefWidth="1080.0" xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.imanager.controller.MainController">
+    <top>
+        <HBox spacing="10.0" alignment="CENTER_LEFT" style="-fx-background-color: #e6f0fa;" prefHeight="50.0">
+            <padding>
+                <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+            </padding>
+            <children>
+                <Button fx:id="btnBack" onAction="#onBack" prefWidth="40.0" prefHeight="36.0" styleClass="primary-btn">
+                    <graphic>
+                        <ImageView fitWidth="20" fitHeight="20" preserveRatio="true">
+                            <image>
+                                <Image url="@icons/back.png"/>
+                            </image>
+                        </ImageView>
+                    </graphic>
+                </Button>
+                <Button fx:id="btnUndo" onAction="#onUndo" prefWidth="40.0" prefHeight="36.0" styleClass="primary-btn">
+                    <graphic>
+                        <ImageView fitWidth="20" fitHeight="20" preserveRatio="true">
+                            <image>
+                                <Image url="@icons/forward.png"/>
+                            </image>
+                        </ImageView>
+                    </graphic>
+                </Button>
+                <TextField fx:id="pathField" text="" promptText="路径..."
+                           style="-fx-background-color: #ffffff; -fx-padding: 0 10 0 10; -fx-font-size: 18px;"
+                           HBox.hgrow="ALWAYS" prefWidth="800.0" prefHeight="36.0"/>
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <SplitPane dividerPositions="0.22" layoutY="50.0" minHeight="400.0" minWidth="500.0"
+                   BorderPane.alignment="CENTER">
+            <items>
+                <AnchorPane prefHeight="500.0" prefWidth="180.0">
+                    <children>
+                        <ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="480.0" prefWidth="170.0"
+                                    AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                                    AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                            <content>
+                                <AnchorPane prefHeight="470.0" prefWidth="160.0">
+                                    <children>
+                                        <TreeView fx:id="dirTreeView" prefHeight="400.0" prefWidth="150.0"
+                                                  AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                                                  AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
+                                    </children>
+                                </AnchorPane>
+                            </content>
+                        </ScrollPane>
+                    </children>
+                </AnchorPane>
+                <AnchorPane prefHeight="500.0" prefWidth="780.0">
+                    <children>
+                        <ScrollPane fx:id="imageScrollPane" hbarPolicy="NEVER" fitToWidth="false" fitToHeight="false"
+                                    layoutX="194.0" layoutY="148.0" prefHeight="480.0" prefWidth="770.0"
+                                    AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                                    AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                            <content>
+                                <AnchorPane fx:id="imageAnchorPane" prefWidth="0.0">
+                                    <children>
+                                        <FlowPane fx:id="imageFlowPane" hgap="10.0" vgap="10.0"
+                                                  onMouseClicked="#clickBlank">
+                                            <padding>
+                                                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
+                                            </padding>
+                                        </FlowPane>
+                                        <Label fx:id="emptyTipLabel" text="暂无内容"
+                                               style="-fx-font-size: 18px; -fx-text-fill: #b0b8c9;"
+                                               AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0"
+                                               AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0"
+                                               alignment="CENTER" textAlignment="CENTER" maxWidth="Infinity"
+                                               maxHeight="Infinity" visible="false"/>
+                                    </children>
+                                </AnchorPane>
+                            </content>
+                        </ScrollPane>
+                    </children>
+                </AnchorPane>
+            </items>
+        </SplitPane>
+    </center>
+    <bottom>
+        <BorderPane prefHeight="40.0" styleClass="status-bar" style="-fx-background-color: transparent;">
+            <left>
+                <Label fx:id="tipLabel" text="Welcome to Image Manager" BorderPane.alignment="CENTER_LEFT">
+                    <font>
+                        <Font size="14.0"/>
+                    </font>
+                    <padding>
+                        <Insets left="10.0"/>
+                    </padding>
+                </Label>
+            </left>
+            <right>
+                <HBox spacing="10.0" alignment="CENTER_RIGHT" style="-fx-padding: 0 5 0 0;">
+                    <Button fx:id="btnPlay" mnemonicParsing="false" onAction="#openSlideShow" prefHeight="30.0"
+                            prefWidth="75.0" styleClass="primary-btn">
+                        <graphic>
+                            <ImageView fitWidth="18" fitHeight="18" preserveRatio="true">
+                                <image>
+                                    <Image url="@icons/play.png"/>
+                                </image>
+                            </ImageView>
+                        </graphic>
+                    </Button>
+                    <!-- 可在此添加更多操作按钮 -->
+                </HBox>
+            </right>
+        </BorderPane>
+    </bottom>
 </BorderPane>

@@ -60,29 +60,39 @@ public class VBoxFactory {
         imageView.setFitHeight(120);
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
-        imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
         Label nameLabel = new Label(truncateFileName(file.getName()));
         nameLabel.setMaxWidth(120);
         nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
         nameLabel.setWrapText(true);
         VBox vBox = new VBox(5, imageView, nameLabel);
+        vBox.getStyleClass().add("card");
         vBox.setPadding(new Insets(5));
         vBox.setStyle(normalStyle);
 
         ContextMenu contextMenu = new ContextMenu();
         if (file.isDirectory()) {
             MenuItem pasteItem = new MenuItem("粘贴");
-            pasteItem.setOnAction(e -> { if (onPaste != null) onPaste.run(); });
+            pasteItem.setOnAction(e -> {
+                if (onPaste != null) onPaste.run();
+            });
             contextMenu.getItems().add(pasteItem);
         } else {
             MenuItem deleteItem = new MenuItem("删除");
-            deleteItem.setOnAction(e -> { if (onDelete != null) onDelete.run(); });
+            deleteItem.setOnAction(e -> {
+                if (onDelete != null) onDelete.run();
+            });
             MenuItem copyItem = new MenuItem("复制");
-            copyItem.setOnAction(e -> { if (onCopy != null) onCopy.run(); });
+            copyItem.setOnAction(e -> {
+                if (onCopy != null) onCopy.run();
+            });
             MenuItem renameItem = new MenuItem("重命名");
-            renameItem.setOnAction(e -> { if (onRename != null) onRename.run(); });
+            renameItem.setOnAction(e -> {
+                if (onRename != null) onRename.run();
+            });
             MenuItem pasteItem = new MenuItem("粘贴");
-            pasteItem.setOnAction(e -> { if (onPaste != null) onPaste.run(); });
+            pasteItem.setOnAction(e -> {
+                if (onPaste != null) onPaste.run();
+            });
             contextMenu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
         }
         vBox.setOnContextMenuRequested(event -> contextMenu.show(vBox, event.getScreenX(), event.getScreenY()));
@@ -178,12 +188,12 @@ public class VBoxFactory {
         imageView.setFitHeight(thumbSize);
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
-        imageView.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #ddd; -fx-border-width: 1px;");
         Label nameLabel = new Label(truncateFileName(file.getName()));
         nameLabel.setMaxWidth(thumbSize);
         nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
         nameLabel.setWrapText(true);
         VBox vBox = new VBox(5, imageView, nameLabel);
+        vBox.getStyleClass().add("card");
         vBox.setPadding(new Insets(5));
         vBox.setStyle(normalStyle);
         setupImageVBox(vBox, normalStyle, selectedStyle, selectedVBoxes, updateTipLabel, onDoubleClickImage, onDelete, onCopy, onRename, onPaste);
@@ -206,13 +216,21 @@ public class VBoxFactory {
     ) {
         ContextMenu contextMenu = new ContextMenu();
         MenuItem deleteItem = new MenuItem("删除");
-        deleteItem.setOnAction(e -> { if (onDelete != null) onDelete.run(); });
+        deleteItem.setOnAction(e -> {
+            if (onDelete != null) onDelete.run();
+        });
         MenuItem copyItem = new MenuItem("复制");
-        copyItem.setOnAction(e -> { if (onCopy != null) onCopy.run(); });
+        copyItem.setOnAction(e -> {
+            if (onCopy != null) onCopy.run();
+        });
         MenuItem renameItem = new MenuItem("重命名");
-        renameItem.setOnAction(e -> { if (onRename != null) onRename.run(); });
+        renameItem.setOnAction(e -> {
+            if (onRename != null) onRename.run();
+        });
         MenuItem pasteItem = new MenuItem("粘贴");
-        pasteItem.setOnAction(e -> { if (onPaste != null) onPaste.run(); });
+        pasteItem.setOnAction(e -> {
+            if (onPaste != null) onPaste.run();
+        });
         contextMenu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
         vBox.setOnContextMenuRequested(event -> {
             boolean alreadySelected = selectedVBoxes.contains(vBox);
@@ -289,6 +307,7 @@ public class VBoxFactory {
         nameLabel.setWrapText(true);
 
         VBox vBox = new VBox(5, imageView, nameLabel);
+        vBox.getStyleClass().add("card");
         vBox.setPadding(new Insets(5));
         vBox.setStyle(normalStyle);
 
@@ -322,13 +341,21 @@ public class VBoxFactory {
     public ContextMenu buildContextMenu(int selectedCount, Runnable onDelete, Runnable onCopy, Runnable onRename, Runnable onPaste) {
         ContextMenu menu = new ContextMenu();
         MenuItem deleteItem = new MenuItem("删除");
-        deleteItem.setOnAction(e -> { if (onDelete != null) onDelete.run(); });
+        deleteItem.setOnAction(e -> {
+            if (onDelete != null) onDelete.run();
+        });
         MenuItem copyItem = new MenuItem("复制");
-        copyItem.setOnAction(e -> { if (onCopy != null) onCopy.run(); });
+        copyItem.setOnAction(e -> {
+            if (onCopy != null) onCopy.run();
+        });
         MenuItem renameItem = new MenuItem("重命名");
-        renameItem.setOnAction(e -> { if (onRename != null) onRename.run(); });
+        renameItem.setOnAction(e -> {
+            if (onRename != null) onRename.run();
+        });
         MenuItem pasteItem = new MenuItem("粘贴");
-        pasteItem.setOnAction(e -> { if (onPaste != null) onPaste.run(); });
+        pasteItem.setOnAction(e -> {
+            if (onPaste != null) onPaste.run();
+        });
         if (selectedCount == 1) {
             // 单选全部可用
             deleteItem.setDisable(false);
@@ -354,24 +381,33 @@ public class VBoxFactory {
 
     /**
      * 构建右键菜单，支持根据选中项类型动态禁用项。
+     *
      * @param selectedCount 选中数量
-     * @param allImage 是否全为图片
-     * @param onDelete 删除回调
-     * @param onCopy 复制回调
-     * @param onRename 重命名回调
-     * @param onPaste 粘贴回调
+     * @param allImage      是否全为图片
+     * @param onDelete      删除回调
+     * @param onCopy        复制回调
+     * @param onRename      重命名回调
+     * @param onPaste       粘贴回调
      * @return ContextMenu
      */
     public ContextMenu buildContextMenu(int selectedCount, boolean allImage, Runnable onDelete, Runnable onCopy, Runnable onRename, Runnable onPaste) {
         ContextMenu menu = new ContextMenu();
         MenuItem deleteItem = new MenuItem("删除");
-        deleteItem.setOnAction(e -> { if (onDelete != null) onDelete.run(); });
+        deleteItem.setOnAction(e -> {
+            if (onDelete != null) onDelete.run();
+        });
         MenuItem copyItem = new MenuItem("复制");
-        copyItem.setOnAction(e -> { if (onCopy != null) onCopy.run(); });
+        copyItem.setOnAction(e -> {
+            if (onCopy != null) onCopy.run();
+        });
         MenuItem renameItem = new MenuItem("重命名");
-        renameItem.setOnAction(e -> { if (onRename != null) onRename.run(); });
+        renameItem.setOnAction(e -> {
+            if (onRename != null) onRename.run();
+        });
         MenuItem pasteItem = new MenuItem("粘贴");
-        pasteItem.setOnAction(e -> { if (onPaste != null) onPaste.run(); });
+        pasteItem.setOnAction(e -> {
+            if (onPaste != null) onPaste.run();
+        });
         if (selectedCount == 1) {
             // 单选全部可用
             deleteItem.setDisable(false);
@@ -393,51 +429,5 @@ public class VBoxFactory {
         }
         menu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
         return menu;
-    }
-
-    // 优化选择逻辑：右键点击已选项不改变多选集合，右键未选项则切换为单选
-    private void setupContextMenuAndSelection(VBox vBox, File file, Set<VBox> selectedVBoxes, Map<VBox, File> vBoxToFile, String normalStyle, String selectedStyle, Runnable updateTipLabel, Runnable onDoubleClick, Runnable onDelete, Runnable onCopy, Runnable onRename, Runnable onPaste) {
-        vBox.setOnContextMenuRequested(event -> {
-            boolean alreadySelected = selectedVBoxes.contains(vBox);
-            if (!alreadySelected) {
-                selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
-                selectedVBoxes.clear();
-                selectedVBoxes.add(vBox);
-                vBox.setStyle(selectedStyle);
-                if (updateTipLabel != null) updateTipLabel.run();
-            }
-            event.consume();
-        });
-        vBox.setOnMousePressed(event -> {
-            if (event.getButton() != MouseButton.PRIMARY && event.getButton() != MouseButton.SECONDARY) {
-                return;
-            }
-            if (event.getButton() == MouseButton.SECONDARY) {
-                return;
-            }
-            boolean ctrlMultiSelect = event.isControlDown() && event.getButton() == MouseButton.PRIMARY;
-            if (ctrlMultiSelect) {
-                if (selectedVBoxes.contains(vBox)) {
-                    selectedVBoxes.remove(vBox);
-                    vBox.setStyle(normalStyle);
-                } else {
-                    selectedVBoxes.add(vBox);
-                    vBox.setStyle(selectedStyle);
-                }
-            } else {
-                selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
-                selectedVBoxes.clear();
-                selectedVBoxes.add(vBox);
-                vBox.setStyle(selectedStyle);
-            }
-            if (updateTipLabel != null) updateTipLabel.run();
-            event.consume();
-        });
-        vBox.setOnMouseClicked(event -> {
-            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
-                if (onDoubleClick != null) onDoubleClick.run();
-                event.consume();
-            }
-        });
     }
 }

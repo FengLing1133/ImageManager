@@ -1,3 +1,9 @@
+/* 底部状态栏分割线和背景色 */
+.status-bar {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #e0e6ed transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
 /* 全局主题色变量（仅注释，JavaFX CSS不支持变量，仅供团队参考） */
 /*
 主色：#3a6ea5
@@ -95,19 +101,27 @@
 }
 
 /* 卡片样式（图片项、面板等） */
+/* 优化卡片圆角和阴影，悬停时放大和阴影加深 */
+/* 优化卡片圆角，强制背景色和裁剪内容，彻底消除尖角 */
 .card {
-    -fx-background-radius: 10;
+    -fx-background-radius: 16;
     -fx-background-color: #fff;
-    -fx-effect: dropshadow(gaussian, rgba(58,110,165,0.08), 8, 0, 0, 2);
+    -fx-effect: dropshadow(gaussian, rgba(58,110,165,0.12), 12, 0, 0, 3);
     -fx-scale-x: 1;
     -fx-scale-y: 1;
     -fx-transition: -fx-scale-x 0.18s, -fx-scale-y 0.18s, -fx-effect 0.18s;
     -fx-padding: 10 10 10 10;
+    -fx-background-insets: 0;
+    -fx-border-radius: 16;
+    -fx-border-color: transparent;
+    /* 关键：让内容裁剪到圆角区域 */
+    -fx-clip: true;
 }
+
 .card:hover {
-    -fx-scale-x: 1.04;
-    -fx-scale-y: 1.04;
-    -fx-effect: dropshadow(gaussian, rgba(58,110,165,0.18), 16, 0, 0, 4);
+    -fx-scale-x: 1.06;
+    -fx-scale-y: 1.06;
+    -fx-effect: dropshadow(gaussian, rgba(58,110,165,0.22), 24, 0, 0, 6);
 }
 
 /* FadeTransition、ScaleTransition 建议在 Java 代码中为页面切换、弹窗等实现 */

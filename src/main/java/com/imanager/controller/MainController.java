@@ -45,6 +45,10 @@ public class MainController {
 
     @FXML
     private AnchorPane imageAnchorPane;
+
+    @FXML
+    private Label emptyTipLabel; // 新增：空目录提示Label
+
     private File currentDir;//记录当前选中的目录
     private DirectoryTreeService directoryTreeService;
     private final FileService fileService = new FileService();
@@ -237,10 +241,7 @@ public class MainController {
         if (files == null || files.length == 0) {
             Platform.runLater(() -> {
                 imageFlowPane.getChildren().clear();
-                Label emptyLabel = new Label("当前目录无文件");
-                emptyLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 14px;");
-                imageFlowPane.getChildren().add(emptyLabel);
-                FlowPane.setMargin(emptyLabel, new Insets(20, 0, 0, 0));
+                emptyTipLabel.setVisible(true);
             });
             return;
         }
@@ -250,7 +251,10 @@ public class MainController {
             return f1.getName().compareToIgnoreCase(f2.getName());
         });
         allFiles.addAll(Arrays.asList(files));
-        Platform.runLater(() -> imageFlowPane.getChildren().clear());
+        Platform.runLater(() -> {
+            imageFlowPane.getChildren().clear();
+            emptyTipLabel.setVisible(false);
+        });
 
         List<File> imageFiles = new ArrayList<>();
         for (File file : allFiles) {
