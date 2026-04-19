@@ -274,44 +274,75 @@ public class MainController {
         allFiles.clear();
         selectedVBoxes.clear();
         vBoxToFile.clear();
-        File[] files = dir.listFiles();
-        if (files == null || files.length == 0) {
-            Platform.runLater(() -> {
-                imageFlowPane.getChildren().clear();
-                emptyTipLabel.setVisible(true);
-            });
-            return;
-        }
-        Arrays.sort(files, (f1, f2) -> {
-            if (f1.isDirectory() && !f2.isDirectory()) return -1;
-            if (!f1.isDirectory() && f2.isDirectory()) return 1;
-            return f1.getName().compareToIgnoreCase(f2.getName());
-        });
-        allFiles.addAll(Arrays.asList(files));
-        Platform.runLater(() -> {
-            imageFlowPane.getChildren().clear();
-            emptyTipLabel.setVisible(false);
-        });
+        imageFlowPane.getChildren().clear();
 
-        List<File> imageFiles = new ArrayList<>();
-        for (File file : allFiles) {
-            if (!file.isDirectory() && fileService.isImageFile(file)) {
-                imageFiles.add(file);
-            } else {
-                createVBoxAsync(file, vBox -> Platform.runLater(() -> {
-                    imageFlowPane.getChildren().add(vBox);
-                    FlowPane.setMargin(vBox, new Insets(5));
-                }));
+        // 异步加载目录内容，防止阻塞UI线程卡顿
+        imageExecutor.submit(() -> {
+            File[] files = dir.listFiles();
+            if (files == null || files.length == 0) {
+                Platform.runLater(() -> {
+                    if (currentDir != dir) return;
+                    emptyTipLabel.setVisible(true);
+                    updateTipLabel();
+                });
+                return;
             }
-        }
 
-        for (File imageFile : imageFiles) {
-            createImageVBoxAsync(imageFile, vBox -> Platform.runLater(() -> {
-                imageFlowPane.getChildren().add(vBox);
-                FlowPane.setMargin(vBox, new Insets(5));
-            }));
-        }
-        updateTipLabel();
+            Arrays.sort(files, (f1, f2) -> {
+                if (f1.isDirectory() && !f2.isDirectory()) return -1;
+                if (!f1.isDirectory() && f2.isDirectory()) return 1;
+                return f1.getName().compareToIgnoreCase(f2.getName());
+            });
+
+            List<File> imageFiles = new ArrayList<>();
+            List<File> nonImageFiles = new ArrayList<>();
+            for (File file : files) {
+                if (!file.isDirectory() && fileService.isImageFile(file)) {
+                    imageFiles.add(file);
+                } else {
+                    nonImageFiles.add(file);
+                }
+            }
+
+            Platform.runLater(() -> {
+                if (currentDir != dir) return; // 如果用户已经切换到其他目录，抛弃当前加载结果
+                emptyTipLabel.setVisible(false);
+                allFiles.addAll(Arrays.asList(files));
+
+                // 预先使用占位符填充，保持原有排序顺序，并记录索引
+                Map<File, Integer> fileIndexMap = new HashMap<>();
+                for (int i = 0; i < files.length; i++) {
+                    fileIndexMap.put(files[i], i);
+                    VBox placeholder = new VBox();
+                    placeholder.setPrefSize(130, 150);
+                    placeholder.setStyle("-fx-background-color: transparent;");
+                    imageFlowPane.getChildren().add(placeholder);
+                }
+
+                for (File file : nonImageFiles) {
+                    createVBoxAsync(file, vBox -> {
+                        if (currentDir != dir) return; // 防止快速切换目录时覆盖新目录的元素
+                        Integer index = fileIndexMap.get(file);
+                        if (index != null && index < imageFlowPane.getChildren().size()) {
+                            imageFlowPane.getChildren().set(index, vBox);
+                            FlowPane.setMargin(vBox, new Insets(5));
+                        }
+                    });
+                }
+
+                for (File imageFile : imageFiles) {
+                    createImageVBoxAsync(imageFile, vBox -> {
+                        if (currentDir != dir) return; // 防止快速切换目录时覆盖新目录的元素
+                        Integer index = fileIndexMap.get(imageFile);
+                        if (index != null && index < imageFlowPane.getChildren().size()) {
+                            imageFlowPane.getChildren().set(index, vBox);
+                            FlowPane.setMargin(vBox, new Insets(5));
+                        }
+                    });
+                }
+                updateTipLabel();
+            });
+        });
     }
 
     //异步创建VBox（图标+名称+点击事件）
