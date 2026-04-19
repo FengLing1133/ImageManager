@@ -1,56 +1,78 @@
-/* 主界面：B 方案（中性灰 + 蓝点缀） */
+/*主界面样式（B 方案：中性灰 + 蓝色点缀）*/
+
 .main-root {
+    /* 设置主字体 */
     -fx-font-family: 'Segoe UI', 'Roboto', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    /* 设置主背景色为浅灰色 */
     -fx-background-color: #f3f5f8;
 }
 
+/* 顶部栏样式 */
 .main-root .top-bar {
+    /* 渐变背景色，从左到右 */
     -fx-background-color: linear-gradient(to right, #f6f8fb, #edf1f6);
+    /* 只在底部加一条灰色边线 */
     -fx-border-color: transparent transparent #d7dee9 transparent;
     -fx-border-width: 0 0 1 0;
 }
 
+/* 按钮基础样式 */
 .main-root .button {
+    /* 白色背景 */
     -fx-background-color: #ffffff;
+    /* 字体颜色深灰 */
     -fx-text-fill: #2e3a49;
+    /* 圆角 */
     -fx-background-radius: 10;
     -fx-border-radius: 10;
+    /* 浅灰色边框 */
     -fx-border-color: #d4dce8;
     -fx-border-width: 1;
+    /* 内边距：上下6px，左右14px */
     -fx-padding: 6 14 6 14;
+    /* 字体大小14px，加粗 */
     -fx-font-size: 14px;
     -fx-font-weight: 600;
+    /* 鼠标悬停时变为小手 */
     -fx-cursor: hand;
+    /* 按钮阴影 */
     -fx-effect: dropshadow(gaussian, rgba(56, 68, 84, 0.10), 8, 0, 0, 1);
 }
 
+/* 按钮悬停效果 */
 .main-root .button:hover {
+    /* 浅蓝背景，边框变蓝，字体变蓝 */
     -fx-background-color: #dbe6f7;
     -fx-border-color: #b7cced;
     -fx-text-fill: #2c5f9f;
 }
 
+/* 按钮按下效果 */
 .main-root .button:pressed {
     -fx-background-color: #c9d6ec;
 }
 
+/* 工具栏按钮（更大圆角和内边距） */
 .main-root .toolbar-btn {
     -fx-background-radius: 12;
     -fx-border-radius: 12;
     -fx-padding: 6 12 6 12;
 }
 
+/* 主要按钮（蓝色背景） */
 .main-root .primary-btn {
     -fx-background-color: #2f70d3;
     -fx-text-fill: #ffffff;
     -fx-border-color: transparent;
 }
 
+/* 主要按钮悬停效果 */
 .main-root .primary-btn:hover {
     -fx-background-color: #245fba;
     -fx-text-fill: #ffffff;
 }
 
+/* 播放按钮（更大圆角和阴影） */
 .main-root .play-btn {
     -fx-background-radius: 18;
     -fx-border-radius: 18;
@@ -58,9 +80,11 @@
     -fx-effect: dropshadow(gaussian, rgba(47, 112, 211, 0.34), 12, 0, 0, 1);
 }
 
+/* 输入框样式 */
 .main-root .text-field {
     -fx-background-color: #ffffff;
     -fx-text-fill: #2b3644;
+    /* 提示文字颜色 */
     -fx-prompt-text-fill: #8d99aa;
     -fx-background-radius: 10;
     -fx-border-radius: 10;
@@ -70,45 +94,54 @@
     -fx-font-size: 15px;
 }
 
+/* 输入框聚焦时边框变蓝并有阴影 */
 .main-root .text-field:focused {
     -fx-border-color: #5a98ea;
     -fx-effect: dropshadow(gaussian, rgba(90, 152, 234, 0.22), 8, 0, 0, 0);
 }
 
+/* 分割面板背景色 */
 .main-root .split-pane {
     -fx-background-color: #e9edf2;
 }
 
+/* 分割条样式 */
 .main-root .split-pane *.divider {
     -fx-background-color: #d4dce7;
     -fx-padding: 0 2 0 2;
 }
 
+/* AnchorPane 和 BorderPane 统一背景色 */
 .main-root .anchor-pane,
 .main-root .border-pane {
     -fx-background-color: #f3f5f8;
 }
 
+/* 图片区域背景色 */
 .main-root #imageAnchorPane,
 .main-root #imageFlowPane {
     -fx-background-color: #eef2f6;
 }
 
+/* 滚动面板透明背景和无边框 */
 .main-root .scroll-pane {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
 }
 
+/* 滚动区域背景色 */
 .main-root .scroll-pane > .viewport {
     -fx-background-color: #f3f5f8;
 }
 
+/* 目录树背景和边框 */
 .main-root .tree-view {
     -fx-background-color: #ffffff;
     -fx-border-color: #d9e0eb;
     -fx-border-width: 0 1 0 0;
 }
 
+/* 目录树单元格样式 */
 .main-root .tree-cell {
     -fx-background-color: #ffffff;
     -fx-text-fill: #2f3a4a;
@@ -117,11 +150,13 @@
     -fx-border-width: 0 0 0 2;
 }
 
+/* 目录树单元格悬停效果 */
 .main-root .tree-cell:hover {
     -fx-background-color: #f6f8fb;
     -fx-border-color: transparent transparent transparent #dde6f3;
 }
 
+/* 目录树单元格选中效果 */
 .main-root .tree-cell:selected {
     -fx-background-color: #e4efff;
     -fx-text-fill: #235fa8;
@@ -129,44 +164,52 @@
     -fx-border-width: 0 0 0 2;
 }
 
+/* 滚动条背景透明 */
 .main-root .scroll-bar:horizontal,
 .main-root .scroll-bar:vertical {
     -fx-background-color: transparent;
 }
 
+/* 滚动条轨道样式 */
 .main-root .scroll-bar:horizontal .track,
 .main-root .scroll-bar:vertical .track {
     -fx-background-color: #e8edf3;
     -fx-background-radius: 8;
 }
 
+/* 滚动条滑块样式 */
 .main-root .scroll-bar:horizontal .thumb,
 .main-root .scroll-bar:vertical .thumb {
     -fx-background-color: #c2ccda;
     -fx-background-radius: 8;
 }
 
+/* 滑块悬停变深色 */
 .main-root .scroll-bar:horizontal .thumb:hover,
 .main-root .scroll-bar:vertical .thumb:hover {
     -fx-background-color: #aebbd0;
 }
 
+/* 状态栏样式 */
 .main-root .status-bar {
     -fx-background-color: #f8fafd;
     -fx-border-color: #d9e0ea transparent transparent transparent;
     -fx-border-width: 1 0 0 0;
 }
 
+/* 标签字体颜色 */
 .main-root .label {
     -fx-text-fill: #2f3a49;
 }
 
+/* 空提示标签颜色 */
 .main-root #emptyTipLabel {
     -fx-text-fill: #97a5b8;
 }
 
 /* 幻灯片界面：保持暗色沉浸感 */
 .slideshow-root .slide-btn {
+    /* 深色背景，白色字体，大圆角 */
     -fx-background-color: #2a2a2a;
     -fx-text-fill: #ffffff;
     -fx-background-radius: 20;
@@ -178,10 +221,12 @@
     -fx-border-radius: 20;
 }
 
+/* 幻灯片按钮悬停变深色 */
 .slideshow-root .slide-btn:hover {
     -fx-background-color: #444444;
 }
 
+/* 幻灯片按钮按下更深色 */
 .slideshow-root .slide-btn:pressed {
     -fx-background-color: #111111;
 }

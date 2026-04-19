@@ -61,6 +61,8 @@ public class MainController {
     private ContextMenu blankContextMenu = null; // 空白区域右键菜单
     private ContextMenu imageContextMenu = null; // 图片右键菜单
     private final Stack<File> dirHistoryStack = new Stack<>(); // 目录历史栈
+    private final List<File> allFiles = new ArrayList<>(); // 当前目录下所有文件
+    private static final int THUMB_SIZE = 120; // 缩略图尺寸
 
     @FXML
     public void initialize() {
@@ -247,10 +249,7 @@ public class MainController {
                 }
             });
 
-    private final List<File> allFiles = new ArrayList<>(); // 当前目录下所有文件
 
-    private static final int THUMB_SIZE = 120; // 缩略图尺寸
-    private static final int FILE_NAME_MAX_LENGTH = 18; // 文件名最大显示长度
 
     private void loadImagesToFlowPane(File dir) { // 加载目录下文件到FlowPane
         allFiles.clear();
@@ -334,8 +333,7 @@ public class MainController {
                 blankContextMenu.hide();
             }
             int selCount = selectedVBoxes.size();
-            boolean allImage = allSelectedAreImages();
-            ContextMenu menu = vBoxFactory.buildContextMenu(selCount, allImage, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
+            ContextMenu menu = vBoxFactory.buildContextMenu(selCount, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
             menu.show(vBox, event.getScreenX(), event.getScreenY());
             imageContextMenu = menu;
         });
@@ -497,15 +495,6 @@ public class MainController {
         return fileService.isImageFile(file); // 判断是否为图片文件
     }
 
-    private boolean allSelectedAreImages() {// 判断选中项是否全部为图片
-        if (selectedVBoxes.isEmpty()) return false;
-        for (VBox vbox : selectedVBoxes) {
-            File file = vBoxToFile.get(vbox);
-            if (file == null || !file.isFile() || !isImageFile(file)) return false; // 任一不是图片则返回false
-        }
-        return true;
-    }
-
     private void updateTipLabel() { // 更新底部提示信息
         if (currentDir == null) {
             tipLabel.setText("Welcome to Image Manager");
@@ -626,7 +615,7 @@ public class MainController {
                 File newFile = new File(file.getParent(), newNameWithExt);
                 if (fileService.renameFile(file, newNameWithExt)) {
                     vBoxToFile.put(vBox, newFile);
-                    ((Label) vBox.getChildren().get(1)).setText(truncateFileName(newNameWithExt));// 更新VBox中文件名标签显示
+                    ((Label) vBox.getChildren().get(1)).setText(VBoxFactory.truncateFileName(newNameWithExt));// 更新VBox中文件名标签显示
                     allFiles.set(allFiles.indexOf(file), newFile);// 更新当前目录文件列表中的File对象
                 } else {
                     showAlert(Alert.AlertType.ERROR, "重命名失败", "无法重命名文件");
@@ -650,14 +639,6 @@ public class MainController {
             });
             updateTipLabel();
         });
-    }
-
-    private String truncateFileName(String name) { // 文件名过长时截断
-        if (name == null || name.length() <= FILE_NAME_MAX_LENGTH) return name;// 如果文件名长度不超过最大限制，直接返回原名
-        int keep = FILE_NAME_MAX_LENGTH - 3;// 计算需要保留的字符数，减去省略号占用的3个字符
-        int prefix = keep / 2;// 保留前半部分字符数
-        int suffix = keep - prefix;// 保留后半部分字符数
-        return name.substring(0, prefix) + "..." + name.substring(name.length() - suffix);// 返回截断后的文件名，格式为“前缀...后缀”
     }
 
     private void showAlert(Alert.AlertType type, String title, String content) {
