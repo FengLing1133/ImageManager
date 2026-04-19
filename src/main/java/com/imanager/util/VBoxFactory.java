@@ -341,13 +341,13 @@ public class VBoxFactory {
             renameItem.setDisable(false);
             pasteItem.setDisable(false);
         } else if (selectedCount > 1) {
-            // 多选时重命名禁用
+            // 多选时重命名、粘贴禁用
             deleteItem.setDisable(false);
             copyItem.setDisable(false);
             renameItem.setDisable(true);
-            pasteItem.setDisable(false);
+            pasteItem.setDisable(true);
         } else {
-            // 空白或异常
+            // 空白或异常，只有粘贴可用
             deleteItem.setDisable(true);
             copyItem.setDisable(true);
             renameItem.setDisable(true);
@@ -393,11 +393,11 @@ public class VBoxFactory {
             renameItem.setDisable(false);
             pasteItem.setDisable(false);
         } else if (selectedCount > 1) {
-            // 多选时仅全为图片才可用
-            deleteItem.setDisable(!allImage);
-            copyItem.setDisable(!allImage);
+            // 多选时，允许删除和复制。重命名、粘贴暂且禁用。
+            deleteItem.setDisable(false);
+            copyItem.setDisable(false);
             renameItem.setDisable(true);
-            pasteItem.setDisable(false);
+            pasteItem.setDisable(true);
         } else {
             // 空白或异常
             deleteItem.setDisable(true);

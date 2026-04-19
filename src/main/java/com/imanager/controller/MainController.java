@@ -371,8 +371,9 @@ public class MainController {
                         menu.show(vBox, event.getScreenX(), event.getScreenY());
                         imageContextMenu = menu;
                     });
-                    imageFlowPane.getChildren().add(vBox);
-                    FlowPane.setMargin(vBox, new Insets(5));
+                    if (callback != null) {
+                        callback.accept(vBox);
+                    }
                 }),
                 imageCache,
                 imageExecutor,
@@ -388,12 +389,6 @@ public class MainController {
                 this::renameSelected,
                 this::pasteFiles
         );
-                // 点击空白处关闭图片右键菜单
-                imageFlowPane.setOnMousePressed(event -> {
-                    if (imageContextMenu != null && imageContextMenu.isShowing()) {
-                        imageContextMenu.hide();
-                    }
-                });
     }
 
     //初始化FlowPane默认提示
@@ -520,7 +515,7 @@ public class MainController {
         if (selectedVBoxes.isEmpty()) return false;
         for (VBox vbox : selectedVBoxes) {
             File file = vBoxToFile.get(vbox);
-            if (file == null || !isImageFile(file)) return false;
+            if (file == null || !file.isFile() || !isImageFile(file)) return false;
         }
         return true;
     }
@@ -608,10 +603,13 @@ public class MainController {
                 // 复制一份，避免遍历时修改集合
                 Set<VBox> toDelete = new HashSet<>(selectedVBoxes);
                 fileService.deleteSelected(toDelete, vBoxToFile, allFiles, deletedVBoxes ->
-                        Platform.runLater(() -> imageFlowPane.getChildren().removeAll(deletedVBoxes))
+                        Platform.runLater(() -> {
+                            imageFlowPane.getChildren().removeAll(deletedVBoxes);
+                            // 将 List 转换为 Set 以提高 removeAll 的效率
+                            selectedVBoxes.removeAll(new HashSet<>(deletedVBoxes));
+                            updateTipLabel();
+                        })
                 );
-                selectedVBoxes.removeAll(toDelete);
-                updateTipLabel();
             }
         });
     }
