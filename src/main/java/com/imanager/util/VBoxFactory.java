@@ -97,36 +97,49 @@ public class VBoxFactory {
         }
         vBox.setOnContextMenuRequested(event -> contextMenu.show(vBox, event.getScreenX(), event.getScreenY()));
 
-        // 左右键都可选中；仅 Ctrl+左键启用多选切换。
-        vBox.setOnMousePressed(event -> {
-            if (event.getButton() != MouseButton.PRIMARY && event.getButton() != MouseButton.SECONDARY) {
-                return;
-            }
-            boolean ctrlMultiSelect = event.isControlDown() && event.getButton() == MouseButton.PRIMARY;
-            if (ctrlMultiSelect) {
-                if (selectedVBoxes.contains(vBox)) {
-                    selectedVBoxes.remove(vBox);
-                    vBox.setStyle(normalStyle);
-                } else {
-                    selectedVBoxes.add(vBox);
-                    vBox.setStyle(selectedStyle);
-                }
-            } else {
-                selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
-                selectedVBoxes.clear();
-                selectedVBoxes.add(vBox);
-                vBox.setStyle(selectedStyle);
-            }
-            if (updateTipLabel != null) updateTipLabel.run();
-            event.consume();
-        });
+        setupFileVBoxSelection(vBox, normalStyle, selectedStyle, selectedVBoxes, updateTipLabel);
 
         vBox.setOnMouseClicked(event -> {
             if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2 && file.isDirectory()) {
-                if (onDoubleClickDir != null) onDoubleClickDir.run();
+                if (onDoubleClickDir != null) onDoubleClickDir.run();//进入该文件夹
                 event.consume();
             }
         });
+        vBoxToFile.put(vBox, file);
+        callback.accept(vBox);
+    }
+
+    //创建图片VBox
+    private void createImageVBox(
+            File file,
+            Image image,
+            Consumer<VBox> callback,
+            int thumbSize,
+            String normalStyle,
+            String selectedStyle,
+            Set<VBox> selectedVBoxes,
+            Map<VBox, File> vBoxToFile,
+            Runnable updateTipLabel,
+            Runnable onDoubleClickImage,
+            Runnable onDelete,
+            Runnable onCopy,
+            Runnable onRename,
+            Runnable onPaste
+    ) {
+        ImageView imageView = new ImageView(image);
+        imageView.setFitWidth(thumbSize);
+        imageView.setFitHeight(thumbSize);
+        imageView.setPreserveRatio(true);
+        imageView.setSmooth(true);
+        Label nameLabel = new Label(truncateFileName(file.getName()));
+        nameLabel.setMaxWidth(thumbSize);
+        nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
+        nameLabel.setWrapText(true);
+        VBox vBox = new VBox(5, imageView, nameLabel);
+        vBox.getStyleClass().add("card");
+        vBox.setPadding(new Insets(5));
+        vBox.setStyle(normalStyle);
+        setupImageVBox(vBox, normalStyle, selectedStyle, selectedVBoxes, updateTipLabel, onDoubleClickImage, onDelete, onCopy, onRename, onPaste);
         vBoxToFile.put(vBox, file);
         callback.accept(vBox);
     }
@@ -166,41 +179,6 @@ public class VBoxFactory {
         });
     }
 
-    //创建图片VBox
-    private void createImageVBox(
-            File file,
-            Image image,
-            Consumer<VBox> callback,
-            int thumbSize,
-            String normalStyle,
-            String selectedStyle,
-            Set<VBox> selectedVBoxes,
-            Map<VBox, File> vBoxToFile,
-            Runnable updateTipLabel,
-            Runnable onDoubleClickImage,
-            Runnable onDelete,
-            Runnable onCopy,
-            Runnable onRename,
-            Runnable onPaste
-    ) {
-        ImageView imageView = new ImageView(image);
-        imageView.setFitWidth(thumbSize);
-        imageView.setFitHeight(thumbSize);
-        imageView.setPreserveRatio(true);
-        imageView.setSmooth(true);
-        Label nameLabel = new Label(truncateFileName(file.getName()));
-        nameLabel.setMaxWidth(thumbSize);
-        nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center;");
-        nameLabel.setWrapText(true);
-        VBox vBox = new VBox(5, imageView, nameLabel);
-        vBox.getStyleClass().add("card");
-        vBox.setPadding(new Insets(5));
-        vBox.setStyle(normalStyle);
-        setupImageVBox(vBox, normalStyle, selectedStyle, selectedVBoxes, updateTipLabel, onDoubleClickImage, onDelete, onCopy, onRename, onPaste);
-        vBoxToFile.put(vBox, file);
-        callback.accept(vBox);
-    }
-
     //配置图片VBox的事件和菜单
     private void setupImageVBox(
             VBox vBox,
@@ -232,6 +210,7 @@ public class VBoxFactory {
             if (onPaste != null) onPaste.run();
         });
         contextMenu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem);
+
         vBox.setOnContextMenuRequested(event -> {
             boolean alreadySelected = selectedVBoxes.contains(vBox);
             if (!alreadySelected) {
@@ -244,39 +223,40 @@ public class VBoxFactory {
             contextMenu.show(vBox, event.getScreenX(), event.getScreenY());
             event.consume();
         });
-        // 仅左键和Ctrl+左键处理选中，右键不处理选中逻辑
+        setupFileVBoxSelection(vBox, normalStyle, selectedStyle, selectedVBoxes, updateTipLabel);
+    }
+
+    // 统一的选中逻辑：左右键都可选中，仅 Ctrl+左键启用多选切换
+    private void setupFileVBoxSelection(VBox vBox, String normalStyle, String selectedStyle, Set<VBox> selectedVBoxes, Runnable updateTipLabel) {
         vBox.setOnMousePressed(event -> {
-            if (event.getButton() != MouseButton.PRIMARY) {
+            if (event.getButton() != MouseButton.PRIMARY && event.getButton() != MouseButton.SECONDARY) {
                 return;
             }
-            boolean ctrlMultiSelect = event.isControlDown();
+            boolean ctrlMultiSelect = event.isControlDown() && event.getButton() == MouseButton.PRIMARY;
             if (ctrlMultiSelect) {
-                if (selectedVBoxes.contains(vBox)) {
+                if (!selectedVBoxes.contains(vBox)) {
+                    selectedVBoxes.add(vBox);
+                    vBox.setStyle(selectedStyle);
+                }else{
                     selectedVBoxes.remove(vBox);
                     vBox.setStyle(normalStyle);
-                } else {
+                }
+            } else {
+                // 只有单击未选中项时才清空其它选中
+                if (!selectedVBoxes.contains(vBox)) {
+                    selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
+                    selectedVBoxes.clear();
                     selectedVBoxes.add(vBox);
                     vBox.setStyle(selectedStyle);
                 }
-            } else {
-                selectedVBoxes.forEach(v -> v.setStyle(normalStyle));
-                selectedVBoxes.clear();
-                selectedVBoxes.add(vBox);
-                vBox.setStyle(selectedStyle);
             }
             if (updateTipLabel != null) updateTipLabel.run();
             event.consume();
         });
-
-        vBox.setOnMouseClicked(event -> {
-            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
-                if (onDoubleClickImage != null) onDoubleClickImage.run();
-                event.consume();
-            }
-        });
     }
 
-    //创建快捷入口VBox（解耦版）
+
+    //创建快捷入口VBox
     public void createShortcutVBox(
             String displayName,
             int thumbSize,
@@ -300,12 +280,10 @@ public class VBoxFactory {
         imageView.setFitHeight(thumbSize);
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
-
         Label nameLabel = new Label(truncateFileName(displayName));
         nameLabel.setMaxWidth(thumbSize);
         nameLabel.setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center; -fx-font-weight: bold;");
         nameLabel.setWrapText(true);
-
         VBox vBox = new VBox(5, imageView, nameLabel);
         vBox.getStyleClass().add("card");
         vBox.setPadding(new Insets(5));
