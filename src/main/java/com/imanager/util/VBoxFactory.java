@@ -34,10 +34,11 @@ public class VBoxFactory {
             String selectedStyle,
             Runnable updateTipLabel,
             Runnable onDoubleClickDir,
-            Runnable onPaste,
             Runnable onDelete,
             Runnable onCopy,
-            Runnable onRename
+            Runnable onRename,
+            Runnable onPaste
+
     ) {
         ImageView imageView;
         if (file.isDirectory()) {

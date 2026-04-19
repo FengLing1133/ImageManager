@@ -325,23 +325,27 @@ public class MainController {
         });
     }
 
+    private void setupVBoxContextMenu(VBox vBox) {//设置VBox的右键菜单逻辑
+        vBox.setOnContextMenuRequested(event -> {
+            if (imageContextMenu != null && imageContextMenu.isShowing()) {
+                imageContextMenu.hide();
+            }
+            if (blankContextMenu != null && blankContextMenu.isShowing()) {
+                blankContextMenu.hide();
+            }
+            int selCount = selectedVBoxes.size();
+            boolean allImage = allSelectedAreImages();
+            ContextMenu menu = vBoxFactory.buildContextMenu(selCount, allImage, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
+            menu.show(vBox, event.getScreenX(), event.getScreenY());
+            imageContextMenu = menu;
+        });
+    }
+
     private void createVBoxAsync(File file, Consumer<VBox> callback) { // 异步创建文件VBox
         vBoxFactory.createVBoxAsync(
                 file,
                 vBox -> {
-                    vBox.setOnContextMenuRequested(event -> {
-                        if (imageContextMenu != null && imageContextMenu.isShowing()) {
-                            imageContextMenu.hide();
-                        }
-                        if (blankContextMenu != null && blankContextMenu.isShowing()) {
-                            blankContextMenu.hide();
-                        }
-                        int selCount = selectedVBoxes.size();
-                        boolean allImage = allSelectedAreImages();
-                        ContextMenu menu = vBoxFactory.buildContextMenu(selCount, allImage, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
-                        menu.show(vBox, event.getScreenX(), event.getScreenY());// 显示右键菜单
-                        imageContextMenu = menu;
-                    });
+                    setupVBoxContextMenu(vBox);
                     callback.accept(vBox);
                 },
                 selectedVBoxes,
@@ -354,10 +358,10 @@ public class MainController {
                     loadImagesToFlowPane(file);
                     directoryTreeService.expandAndSelectInTree(file.getAbsolutePath());
                 },
-                this::pasteFiles,
                 this::deleteSelected,
                 this::copySelected,
-                this::renameSelected
+                this::renameSelected,
+                this::pasteFiles
         );
     }
 
@@ -365,19 +369,7 @@ public class MainController {
         vBoxFactory.createImageVBoxAsync(
                 file,
                 vBox -> Platform.runLater(() -> {
-                    vBox.setOnContextMenuRequested(event -> {
-                        if (imageContextMenu != null && imageContextMenu.isShowing()) {
-                            imageContextMenu.hide();
-                        }
-                        if (blankContextMenu != null && blankContextMenu.isShowing()) {
-                            blankContextMenu.hide();
-                        }
-                        int selCount = selectedVBoxes.size();
-                        boolean allImage = allSelectedAreImages();
-                        ContextMenu menu = vBoxFactory.buildContextMenu(selCount, allImage, this::deleteSelected, this::copySelected, this::renameSelected, this::pasteFiles);
-                        menu.show(vBox, event.getScreenX(), event.getScreenY());
-                        imageContextMenu = menu;
-                    });
+                    setupVBoxContextMenu(vBox);
                     if (callback != null) {
                         callback.accept(vBox);
                     }
