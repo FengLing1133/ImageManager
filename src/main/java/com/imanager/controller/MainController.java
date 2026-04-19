@@ -56,8 +56,8 @@ public class MainController {
     private final Set<VBox> selectedVBoxes = new HashSet<>();
     private final Map<VBox, File> vBoxToFile = new HashMap<>();
     private final List<File> copiedFiles = new ArrayList<>();
-    private static final String NORMAL_STYLE = "-fx-alignment: center; -fx-border-color: #d7e1ee; -fx-border-width: 1.5px; -fx-background-color: #ffffff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-effect: dropshadow(gaussian, rgba(35, 64, 97, 0.12), 10, 0, 0, 2);";
-    private static final String SELECTED_STYLE = "-fx-alignment: center; -fx-border-color: #4f9cff; -fx-border-width: 2px; -fx-background-color: #eef5ff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-effect: dropshadow(gaussian, rgba(79, 156, 255, 0.24), 12, 0, 0, 2);";
+    private static final String NORMAL_STYLE = "-fx-alignment: center; -fx-border-color: #d4dce8; -fx-border-width: 1.5px; -fx-background-color: #ffffff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-effect: dropshadow(gaussian, rgba(56, 68, 84, 0.11), 10, 0, 0, 2);";
+    private static final String SELECTED_STYLE = "-fx-alignment: center; -fx-border-color: #5a98ea; -fx-border-width: 2px; -fx-background-color: #eaf2ff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-effect: dropshadow(gaussian, rgba(90, 152, 234, 0.24), 12, 0, 0, 2);";
     private ContextMenu blankContextMenu = null;
     private ContextMenu imageContextMenu = null; // 保证图片右键菜单唯一
 
@@ -234,7 +234,7 @@ public class MainController {
             if (file.exists() && file.isDirectory()) {
                 updateCurrentDirAndRefresh(file);
             } else {
-                pathField.setStyle("-fx-background-color: #fff1f1; -fx-text-fill: #c62828; -fx-border-color: #f1a7a7; -fx-border-width: 1; -fx-background-radius: 10; -fx-border-radius: 10;");
+                pathField.setStyle("-fx-background-color: #fff4f4; -fx-text-fill: #b92d2d; -fx-border-color: #efb4b4; -fx-border-width: 1; -fx-background-radius: 10; -fx-border-radius: 10;");
                 pathField.setText("路径无效");
                 PauseTransition pause = new PauseTransition(Duration.seconds(1));
                 pause.setOnFinished(e -> {

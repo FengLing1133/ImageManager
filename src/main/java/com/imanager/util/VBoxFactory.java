@@ -1,15 +1,20 @@
 package com.imanager.util;
 
 import javafx.application.Platform;
+import javafx.animation.TranslateTransition;
 import javafx.geometry.Insets;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.util.Duration;
 
 import java.io.File;
 import java.util.Map;
@@ -68,6 +73,7 @@ public class VBoxFactory {
         vBox.getStyleClass().add("card");
         vBox.setPadding(new Insets(5));
         vBox.setStyle(normalStyle);
+        setupCardHoverEffect(vBox);
 
         ContextMenu contextMenu = new ContextMenu();
         if (file.isDirectory()) {
@@ -139,6 +145,7 @@ public class VBoxFactory {
         vBox.getStyleClass().add("card");
         vBox.setPadding(new Insets(5));
         vBox.setStyle(normalStyle);
+        setupCardHoverEffect(vBox);
         setupImageVBox(vBox, normalStyle, selectedStyle, selectedVBoxes, updateTipLabel, onDoubleClickImage, onDelete, onCopy, onRename, onPaste);
         vBoxToFile.put(vBox, file);
         callback.accept(vBox);
@@ -223,6 +230,17 @@ public class VBoxFactory {
             contextMenu.show(vBox, event.getScreenX(), event.getScreenY());
             event.consume();
         });
+
+        // 图片卡片双击打开幻灯片（使用事件过滤避免被选中逻辑吞掉）
+        vBox.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
+                if (onDoubleClickImage != null) {
+                    onDoubleClickImage.run();
+                }
+                event.consume();
+            }
+        });
+
         setupFileVBoxSelection(vBox, normalStyle, selectedStyle, selectedVBoxes, updateTipLabel);
     }
 
@@ -288,6 +306,7 @@ public class VBoxFactory {
         vBox.getStyleClass().add("card");
         vBox.setPadding(new Insets(5));
         vBox.setStyle(normalStyle);
+        setupCardHoverEffect(vBox);
 
         vBox.setOnMouseClicked(event -> {
             if (event.getClickCount() == 1) {
@@ -313,6 +332,27 @@ public class VBoxFactory {
         int prefix = keep / 2;
         int suffix = keep - prefix;
         return name.substring(0, prefix) + "..." + name.substring(name.length() - suffix);
+    }
+
+    // 卡片悬停时轻微上浮，提升现代感
+    private void setupCardHoverEffect(VBox vBox) {
+        TranslateTransition up = new TranslateTransition(Duration.millis(140), vBox);
+        up.setToY(-4);
+        TranslateTransition down = new TranslateTransition(Duration.millis(140), vBox);
+        down.setToY(0);
+        DropShadow hoverShadow = new DropShadow(14, Color.rgb(56, 68, 84, 0.18));
+        hoverShadow.setOffsetY(3);
+
+        vBox.setOnMouseEntered(event -> {
+            down.stop();
+            up.playFromStart();
+            vBox.setEffect(hoverShadow);
+        });
+        vBox.setOnMouseExited(event -> {
+            up.stop();
+            down.playFromStart();
+            vBox.setEffect(null);
+        });
     }
 
     // 动态生成右键菜单
