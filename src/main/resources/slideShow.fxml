@@ -10,10 +10,10 @@
 <?import javafx.scene.text.Font?>
 
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="340.0" minWidth="420.0" prefHeight="700.0"
-            prefWidth="1000.0" style="-fx-background-color: #000000;" xmlns="http://javafx.com/javafx/17"
+            prefWidth="1000.0" style="-fx-background-color: #000000;" stylesheets="@style.css" xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.imanager.controller.SlideShowController">
     <padding>
-        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
+        <Insets bottom="0.0" left="0.0" right="0.0" top="0.0"/>
     </padding>
     <center>
         <StackPane fx:id="stackPane" style="-fx-background-color: #000000;" minWidth="400.0" minHeight="300.0">
@@ -21,21 +21,20 @@
         </StackPane>
     </center>
     <bottom>
-        <HBox prefHeight="60.0" prefWidth="1000.0" spacing="10.0" BorderPane.alignment="CENTER_RIGHT">
+        <HBox alignment="CENTER" prefHeight="70.0" prefWidth="1000.0" spacing="15.0" style="-fx-background-color: #111111;" BorderPane.alignment="CENTER">
             <padding>
-                <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+                <Insets bottom="10.0" left="20.0" right="20.0" top="10.0"/>
             </padding>
             <children>
-                <Button fx:id="btnPrev" mnemonicParsing="false" onAction="#prevImage" text="Prev"/>
-                <Button fx:id="btnNext" mnemonicParsing="false" onAction="#nextImage" text="Next"/>
-                <Button fx:id="btnZoomIn" mnemonicParsing="false" onAction="#zoomIn" onMousePressed="#stopZooming" text="Zoom In"/>
-                <Button fx:id="btnZoomOut" mnemonicParsing="false" onAction="#zoomOut" onMousePressed="#stopZooming" text="Zoom Out"/>
-                <Button fx:id="btnPlay" mnemonicParsing="false" onAction="#startPlay" text="Play"/>
-                <Button fx:id="btnStop" mnemonicParsing="false" onAction="#stopPlay" text="Stop"/>
-                <Label fx:id="pageLabel" prefHeight="40.0" prefWidth="100.0" style="-fx-background-color: #83d9b6;"
-                       text="0/0" textAlignment="CENTER">
+                <Button fx:id="btnPrev" mnemonicParsing="false" onAction="#prevImage" styleClass="slide-btn" text="Prev"/>
+                <Button fx:id="btnNext" mnemonicParsing="false" onAction="#nextImage" styleClass="slide-btn" text="Next"/>
+                <Button fx:id="btnZoomIn" mnemonicParsing="false" onAction="#zoomIn" onMousePressed="#stopZooming" styleClass="slide-btn" text="Zoom In"/>
+                <Button fx:id="btnZoomOut" mnemonicParsing="false" onAction="#zoomOut" onMousePressed="#stopZooming" styleClass="slide-btn" text="Zoom Out"/>
+                <Button fx:id="btnPlay" mnemonicParsing="false" onAction="#startPlay" styleClass="slide-btn" text="Play"/>
+                <Button fx:id="btnStop" mnemonicParsing="false" onAction="#stopPlay" styleClass="slide-btn" text="Stop"/>
+                <Label fx:id="pageLabel" alignment="CENTER" prefHeight="40.0" prefWidth="100.0" style="-fx-text-fill: #aaaaaa;" text="0/0">
                     <font>
-                        <Font size="24.0"/>
+                        <Font size="16.0"/>
                     </font>
                 </Label>
             </children>

@@ -126,3 +126,26 @@
 
 /* FadeTransition、ScaleTransition 建议在 Java 代码中为页面切换、弹窗等实现 */
 /* CSS 仅能实现简单的 :hover 动画，复杂动画请在控制器中用 JavaFX 动画类实现 */
+
+/* 幻灯片底部按钮样式 */
+.slide-btn {
+    -fx-background-color: #2a2a2a;
+    -fx-text-fill: #ffffff;
+    -fx-background-radius: 20;
+    -fx-font-size: 14px;
+    -fx-padding: 8 20 8 20;
+    -fx-cursor: hand;
+    -fx-border-width: 1;
+    -fx-border-color: #444444;
+    -fx-border-radius: 20;
+    -fx-transition: all 0.2s;
+}
+.slide-btn:hover {
+    -fx-background-color: #444444;
+    -fx-text-fill: #ffffff;
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+.slide-btn:pressed {
+    -fx-background-color: #111111;
+}
