@@ -10,7 +10,7 @@
 <?import javafx.scene.text.Font?>
 
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="340.0" minWidth="420.0" prefHeight="700.0"
-            prefWidth="1000.0" style="-fx-background-color: #000000;" stylesheets="@style.css" xmlns="http://javafx.com/javafx/17"
+            prefWidth="1000.0" styleClass="slideshow-root" style="-fx-background-color: #000000;" stylesheets="@style.css" xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.imanager.controller.SlideShowController">
     <padding>
         <Insets bottom="0.0" left="0.0" right="0.0" top="0.0"/>

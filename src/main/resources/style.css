@@ -1,134 +1,149 @@
-/* 底部状态栏分割线和背景色 */
-.status-bar {
-    -fx-background-color: #f8fafc;
-    -fx-border-color: #e0e6ed transparent transparent transparent;
+/* 主界面：现代浅色主题（仅作用于 main.fxml 根节点） */
+.main-root {
+    -fx-font-family: 'Segoe UI', 'Roboto', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    -fx-background-color: #f4f7fb;
+}
+
+.main-root .top-bar {
+    -fx-background-color: linear-gradient(to right, #f9fbff, #f2f6fc);
+    -fx-border-color: transparent transparent #d9e3f0 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.main-root .button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #2c3e55;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #d7e0eb;
+    -fx-border-width: 1;
+    -fx-padding: 6 16 6 16;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(23, 57, 95, 0.10), 10, 0, 0, 2);
+}
+
+.main-root .button:hover {
+    -fx-background-color: #f3f8ff;
+    -fx-border-color: #bfd7f5;
+    -fx-text-fill: #1e4f88;
+}
+
+.main-root .button:pressed {
+    -fx-background-color: #e9f2ff;
+}
+
+.main-root .primary-btn {
+    -fx-background-color: #2f80ed;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: transparent;
+}
+
+.main-root .primary-btn:hover {
+    -fx-background-color: #216fda;
+    -fx-text-fill: #ffffff;
+}
+
+.main-root .text-field {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #2a3442;
+    -fx-prompt-text-fill: #8b9cb3;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #d2ddea;
+    -fx-border-width: 1;
+    -fx-padding: 7 12 7 12;
+    -fx-font-size: 15px;
+}
+
+.main-root .text-field:focused {
+    -fx-border-color: #4f9cff;
+    -fx-effect: dropshadow(gaussian, rgba(79, 156, 255, 0.28), 8, 0, 0, 0);
+}
+
+.main-root .split-pane {
+    -fx-background-color: #edf2f8;
+}
+
+.main-root .split-pane *.divider {
+    -fx-background-color: #d6e0ec;
+    -fx-padding: 0 2 0 2;
+}
+
+.main-root .anchor-pane,
+.main-root .border-pane {
+    -fx-background-color: #f4f7fb;
+}
+
+.main-root .scroll-pane {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.main-root .scroll-pane > .viewport {
+    -fx-background-color: #f4f7fb;
+}
+
+.main-root .tree-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d8e2ef;
+    -fx-border-width: 0 1 0 0;
+}
+
+.main-root .tree-cell {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #2e3b4f;
+    -fx-padding: 5 8;
+}
+
+.main-root .tree-cell:hover {
+    -fx-background-color: #f0f6ff;
+}
+
+.main-root .tree-cell:selected {
+    -fx-background-color: #dcecff;
+    -fx-text-fill: #1d4f89;
+}
+
+.main-root .scroll-bar:horizontal,
+.main-root .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+
+.main-root .scroll-bar:horizontal .track,
+.main-root .scroll-bar:vertical .track {
+    -fx-background-color: #edf2f8;
+    -fx-background-radius: 8;
+}
+
+.main-root .scroll-bar:horizontal .thumb,
+.main-root .scroll-bar:vertical .thumb {
+    -fx-background-color: #c8d6e8;
+    -fx-background-radius: 8;
+}
+
+.main-root .scroll-bar:horizontal .thumb:hover,
+.main-root .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #afc4dc;
+}
+
+.main-root .status-bar {
+    -fx-background-color: #f8fbff;
+    -fx-border-color: #d9e3f0 transparent transparent transparent;
     -fx-border-width: 1 0 0 0;
 }
-/* 全局主题色变量（仅注释，JavaFX CSS不支持变量，仅供团队参考） */
-/*
-主色：#3a6ea5
-主色深：#274472
-主色浅：#e6f0fa
-辅助色：#f9a825
-成功色：#43a047
-警告色：#e53935
-背景色：#f4f7fa
-卡片色：#fff
-边框色：#e0e6ed
-主字体色：#222b45
-次字体色：#6b7a90
-*/
 
-/* 全局字体设置 */
-.root {
-    -fx-font-family: 'Segoe UI', 'Roboto', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    -fx-text-fill: #222b45;
-    -fx-background-color: #f4f7fa;
+.main-root .label {
+    -fx-text-fill: #2f3b4a;
 }
 
-/* 扁平化主按钮样式，悬停/按下时颜色渐变或加深 */
-.button {
-    -fx-background-color: #ffffff;
-    -fx-text-fill: #3a6ea5;
-    -fx-background-radius: 8;
-    -fx-effect: dropshadow(gaussian, rgba(58,110,165,0.10), 6, 0, 0, 2);
-    -fx-font-size: 15px;
-    -fx-cursor: hand;
-    -fx-border-width: 1;
-    -fx-border-color: #e0e6ed;
-    -fx-padding: 6 18 6 18;
-    -fx-font-weight: 500;
-    -fx-border-radius: 8;
-    -fx-background-insets: 0;
-    -fx-transition: all 0.2s;
-    -fx-scale-x: 1;
-    -fx-scale-y: 1;
-}
-.button:hover {
-    -fx-background-color: #e6f0fa;
-    -fx-text-fill: #274472;
-    -fx-scale-x: 1.06;
-    -fx-scale-y: 1.06;
-    -fx-effect: dropshadow(gaussian, rgba(58,110,165,0.22), 12, 0, 0, 4);
-}
-.button:pressed {
-    -fx-background-color: #e0e6ed;
-    -fx-text-fill: #274472;
+.main-root #emptyTipLabel {
+    -fx-text-fill: #93a6bd;
 }
 
-/* 主要按钮样式 */
-.primary-btn {
-    -fx-background-color: #3a6ea5;
-    -fx-text-fill: #fff;
-    -fx-background-radius: 8;
-    -fx-font-weight: bold;
-    -fx-font-size: 15px;
-    -fx-padding: 6 18 6 18;
-    -fx-border-width: 0;
-}
-.primary-btn:hover {
-    -fx-background-color: #274472;
-    -fx-text-fill: #fff;
-}
-
-/* 输入框扁平化、圆角、内阴影，聚焦高亮边框 */
-.text-field {
-    -fx-background-color: #ffffff;
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
-    -fx-border-color: transparent;
-    -fx-border-width: 1;
-    -fx-padding: 6 12 6 12;
-    -fx-font-size: 15px;
-    -fx-effect: innershadow(gaussian, rgba(58,110,165,0.08), 6, 0, 0, 1);
-    -fx-prompt-text-fill: #6b7a90;
-    -fx-background-insets: 0;
-}
-.text-field:focused {
-    -fx-border-color: #3a6ea5;
-    -fx-effect: innershadow(gaussian, rgba(58,110,165,0.18), 8, 0, 0, 2);
-}
-
-/* 面板圆角和阴影 */
-.anchor-pane, .border-pane, .scroll-pane, .split-pane {
-    -fx-background-radius: 8;
-    -fx-effect: dropshadow(gaussian, rgba(58,110,165,0.04), 8, 0, 0, 2);
-}
-
-/* Label字体颜色 */
-.label {
-    -fx-text-fill: #222b45;
-}
-
-/* 卡片样式（图片项、面板等） */
-/* 优化卡片圆角和阴影，悬停时放大和阴影加深 */
-/* 优化卡片圆角，强制背景色和裁剪内容，彻底消除尖角 */
-.card {
-    -fx-background-radius: 16;
-    -fx-background-color: #fff;
-    -fx-effect: dropshadow(gaussian, rgba(58,110,165,0.12), 12, 0, 0, 3);
-    -fx-scale-x: 1;
-    -fx-scale-y: 1;
-    -fx-transition: -fx-scale-x 0.18s, -fx-scale-y 0.18s, -fx-effect 0.18s;
-    -fx-padding: 10 10 10 10;
-    -fx-background-insets: 0;
-    -fx-border-radius: 16;
-    -fx-border-color: transparent;
-    /* 关键：让内容裁剪到圆角区域 */
-    -fx-clip: true;
-}
-
-.card:hover {
-    -fx-scale-x: 1.06;
-    -fx-scale-y: 1.06;
-    -fx-effect: dropshadow(gaussian, rgba(58,110,165,0.22), 24, 0, 0, 6);
-}
-
-/* FadeTransition、ScaleTransition 建议在 Java 代码中为页面切换、弹窗等实现 */
-/* CSS 仅能实现简单的 :hover 动画，复杂动画请在控制器中用 JavaFX 动画类实现 */
-
-/* 幻灯片底部按钮样式 */
-.slide-btn {
+/* 幻灯片界面：保持暗色沉浸感 */
+.slideshow-root .slide-btn {
     -fx-background-color: #2a2a2a;
     -fx-text-fill: #ffffff;
     -fx-background-radius: 20;
@@ -138,14 +153,12 @@
     -fx-border-width: 1;
     -fx-border-color: #444444;
     -fx-border-radius: 20;
-    -fx-transition: all 0.2s;
 }
-.slide-btn:hover {
+
+.slideshow-root .slide-btn:hover {
     -fx-background-color: #444444;
-    -fx-text-fill: #ffffff;
-    -fx-scale-x: 1.05;
-    -fx-scale-y: 1.05;
 }
-.slide-btn:pressed {
+
+.slideshow-root .slide-btn:pressed {
     -fx-background-color: #111111;
 }

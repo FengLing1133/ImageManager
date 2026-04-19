@@ -56,8 +56,8 @@ public class MainController {
     private final Set<VBox> selectedVBoxes = new HashSet<>();
     private final Map<VBox, File> vBoxToFile = new HashMap<>();
     private final List<File> copiedFiles = new ArrayList<>();
-    private static final String NORMAL_STYLE = "-fx-alignment: center; -fx-border-color: #cccccc; -fx-border-width: 2px; -fx-background-color: #fff;";
-    private static final String SELECTED_STYLE = "-fx-border-color: #2196f3; -fx-border-width: 2px; -fx-background-color: #e3f2fd; -fx-alignment: center;";
+    private static final String NORMAL_STYLE = "-fx-alignment: center; -fx-border-color: #d7e1ee; -fx-border-width: 1.5px; -fx-background-color: #ffffff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-effect: dropshadow(gaussian, rgba(35, 64, 97, 0.12), 10, 0, 0, 2);";
+    private static final String SELECTED_STYLE = "-fx-alignment: center; -fx-border-color: #4f9cff; -fx-border-width: 2px; -fx-background-color: #eef5ff; -fx-background-radius: 14; -fx-border-radius: 14; -fx-effect: dropshadow(gaussian, rgba(79, 156, 255, 0.24), 12, 0, 0, 2);";
     private ContextMenu blankContextMenu = null;
     private ContextMenu imageContextMenu = null; // 保证图片右键菜单唯一
 
@@ -234,12 +234,12 @@ public class MainController {
             if (file.exists() && file.isDirectory()) {
                 updateCurrentDirAndRefresh(file);
             } else {
-                pathField.setStyle("-fx-background-color: #ffe6e6;");
+                pathField.setStyle("-fx-background-color: #fff1f1; -fx-text-fill: #c62828; -fx-border-color: #f1a7a7; -fx-border-width: 1; -fx-background-radius: 10; -fx-border-radius: 10;");
                 pathField.setText("路径无效");
                 PauseTransition pause = new PauseTransition(Duration.seconds(1));
                 pause.setOnFinished(e -> {
                     if (currentDir != null) pathField.setText(currentDir.getAbsolutePath());
-                    pathField.setStyle("-fx-background-color: #ffffff;");
+                    pathField.setStyle(""); // 回退到 CSS 默认样式
                 });
                 pause.play();
             }
