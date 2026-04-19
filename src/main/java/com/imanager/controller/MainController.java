@@ -5,7 +5,10 @@ import com.imanager.service.FileService;
 import com.imanager.util.AlterUtil;
 import com.imanager.util.VBoxFactory;
 import javafx.application.Platform;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
+import javafx.animation.Timeline;
 import javafx.scene.layout.AnchorPane;
 import javafx.util.Duration;
 import javafx.fxml.FXML;
@@ -27,8 +30,6 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 public class MainController {
-    private static final Insets CARD_MARGIN = new Insets(5);
-    private static final int HOVER_EFFECT_THRESHOLD = 500;
 
     @FXML
     private TreeView<String> dirTreeView;
@@ -65,8 +66,18 @@ public class MainController {
     private final Stack<File> dirHistoryStack = new Stack<>(); // 目录历史栈
     private final List<File> allFiles = new ArrayList<>(); // 当前目录下所有文件
     private static final int THUMB_SIZE = 120; // 缩略图尺寸
-    private long cachedImageCount = 0;
-    private long cachedTotalSize = 0;
+    private long cachedImageCount = 0;// 当前目录图片数量缓存
+    private long cachedTotalSize = 0;// 当前目录总大小缓存
+    private long activeLoadToken = 0;// 活动加载令牌，用于异步加载结果的有效性验证
+    private Timeline buildTimeline;// 构建VBox的动画时间轴
+    private Timeline renderTimeline;// 渲染VBox的动画时间轴
+    private final Deque<Runnable> pendingBuildTasks = new ArrayDeque<>();// 待构建任务队列，存储需要构建的VBox任务
+    private final Deque<CardRenderTask> pendingRenderTasks = new ArrayDeque<>();// 待渲染任务队列，存储需要渲染到FlowPane的VBox任务
+    private static final Insets CARD_MARGIN = new Insets(5);// 卡片间距
+    private static final int HOVER_EFFECT_THRESHOLD = 500;// 启用悬停效果的文件数量阈值，超过后禁用以提升性能
+    private static final int PROGRESSIVE_RENDER_THRESHOLD = 600;// 启用渐进式渲染的文件数量阈值，超过后分批构建和渲染以避免界面冻结
+    private static final int BUILD_BATCH_SIZE = 24;// 每批构建的VBox数量，过多可能导致界面卡顿，过少则加载过慢
+    private static final int RENDER_BATCH_SIZE = 32;// 每批渲染的VBox数量，过多可能导致界面卡顿，过少则加载过慢
 
     @FXML
     public void initialize() {
@@ -202,17 +213,22 @@ public class MainController {
             if (newItem != null) {
                 String fullPath = directoryTreeService.getFullPath(newItem);// 获取选中节点的完整路径
                 File selectedDir = new File(fullPath);
-                updateCurrentDirAndRefresh(selectedDir);// 更新当前目录并刷新图片预览区
+                navigateToDirectory(selectedDir, false);// 树选择已同步，无需再次反向同步树
             }
         });
     }
 
-    private void updateCurrentDirAndRefresh(File dir) {// 更新当前目录并刷新图片预览区
+    private void navigateToDirectory(File dir, boolean syncTreeSelection) {// 更新当前目录并刷新图片预览区
         if (dir != null && dir.isDirectory()) {
+            if (dir.equals(currentDir)) {
+                return;
+            }
             currentDir = dir;
             pathField.setText(dir.getAbsolutePath());// 初始化路径输入框显示当前目录
             loadImagesToFlowPane(dir);
-            directoryTreeService.expandAndSelectInTree(dir.getAbsolutePath());// 同步更新目录树选择状态
+            if (syncTreeSelection) {
+                directoryTreeService.expandAndSelectInTree(dir.getAbsolutePath());// 同步更新目录树选择状态
+            }
         }
     }
 
@@ -224,7 +240,7 @@ public class MainController {
             String inputPath = pathField.getText();
             File file = new File(inputPath);// 根据输入路径创建File对象
             if (file.exists() && file.isDirectory()) {
-                updateCurrentDirAndRefresh(file);// 如果路径有效，更新当前目录并刷新图片预览区
+                navigateToDirectory(file, true);// 如果路径有效，更新当前目录并刷新图片预览区
             } else {
                 pathField.setStyle("-fx-background-color: #fff4f4; -fx-text-fill: #b92d2d; -fx-border-color: #efb4b4; -fx-border-width: 1; -fx-background-radius: 10; -fx-border-radius: 10;");
                 pathField.setText("路径无效");
@@ -256,6 +272,8 @@ public class MainController {
 
 
     private void loadImagesToFlowPane(File dir) { // 加载目录下文件到FlowPane
+        long loadToken = ++activeLoadToken;
+        stopProgressivePipelines();
         allFiles.clear();
         selectedVBoxes.clear();
         vBoxToFile.clear();
@@ -265,7 +283,7 @@ public class MainController {
             File[] files = dir.listFiles();// 获取目录下所有文件
             if (files == null || files.length == 0) {
                 Platform.runLater(() -> {
-                    if (currentDir != dir) return;
+                    if (isStaleLoad(loadToken, dir)) return;
                     emptyTipLabel.setVisible(true);// 显示空目录提示
                     cachedImageCount = 0;
                     cachedTotalSize = 0;
@@ -303,9 +321,10 @@ public class MainController {
             final long finalImageCount = imageCount;
             final long finalTotalSize = totalSize;
             final boolean enableHoverEffects = files.length <= HOVER_EFFECT_THRESHOLD;
+            final boolean progressiveRender = files.length >= PROGRESSIVE_RENDER_THRESHOLD;
 
             Platform.runLater(() -> {
-                if (currentDir != dir) return; // 如果用户已经切换到其他目录，抛弃当前加载结果
+                if (isStaleLoad(loadToken, dir)) return; // 如果用户已经切换到其他目录，抛弃当前加载结果
                 emptyTipLabel.setVisible(false);// 显示空目录提示
                 allFiles.addAll(Arrays.asList(files));// 更新当前目录文件列表
                 cachedImageCount = finalImageCount;
@@ -324,29 +343,106 @@ public class MainController {
                 imageFlowPane.getChildren().setAll(placeholders);
 
                 for (File file : nonImageFiles) {
-                    createVBoxAsync(file, vBox -> {
-                        if (currentDir != dir) return; // 防止快速切换目录时覆盖新目录的元素
+                    pendingBuildTasks.addLast(() -> createVBoxAsync(file, vBox -> {
                         Integer index = fileIndexMap.get(file);// 获取文件对应的索引位置
-                        if (index != null && index < imageFlowPane.getChildren().size()) {
-                            imageFlowPane.getChildren().set(index, vBox);// 替换占位符为实际VBox
-                            FlowPane.setMargin(vBox, CARD_MARGIN);// 设置VBox之间的间距
+                        if (index != null) {
+                            enqueueRenderTask(loadToken, dir, index, vBox);
                         }
-                    });
+                    }));
                 }
 
                 for (File imageFile : imageFiles) {
-                    createImageVBoxAsync(imageFile, vBox -> {
-                        if (currentDir != dir) return; // 防止快速切换目录时覆盖新目录的元素
+                    pendingBuildTasks.addLast(() -> createImageVBoxAsync(imageFile, vBox -> {
                         Integer index = fileIndexMap.get(imageFile);
-                        if (index != null && index < imageFlowPane.getChildren().size()) {
-                            imageFlowPane.getChildren().set(index, vBox);
-                            FlowPane.setMargin(vBox, CARD_MARGIN);
+                        if (index != null) {
+                            enqueueRenderTask(loadToken, dir, index, vBox);
                         }
-                    });
+                    }));
+                }
+
+                if (progressiveRender) {
+                    startBuildPump(loadToken, dir);
+                } else {
+                    while (!pendingBuildTasks.isEmpty() && !isStaleLoad(loadToken, dir)) {
+                        pendingBuildTasks.pollFirst().run();
+                    }
                 }
                 updateTipLabel();
             });
         });
+    }
+
+    private boolean isStaleLoad(long loadToken, File dir) {
+        return loadToken != activeLoadToken || !Objects.equals(currentDir, dir);// 验证加载令牌和当前目录是否匹配，防止过时的异步加载结果影响界面
+    }
+
+    private void enqueueRenderTask(long loadToken, File dir, int index, VBox vBox) {
+        if (isStaleLoad(loadToken, dir)) {
+            return;
+        }
+        pendingRenderTasks.addLast(new CardRenderTask(index, vBox));// 将渲染任务添加到队列
+        ensureRenderPump(loadToken, dir);// 确保渲染管道正在运行
+    }
+
+    private void startBuildPump(long loadToken, File dir) {// 启动构建管道，分批执行构建任务以避免界面冻结
+        if (buildTimeline != null) {
+            buildTimeline.stop();// 如果构建管道已经在运行，先停止它
+        }
+        buildTimeline = new Timeline(new KeyFrame(Duration.millis(16), event -> {
+            if (isStaleLoad(loadToken, dir)) {
+                stopProgressivePipelines();// 如果加载过时，停止所有渐进式管道并清空任务队列
+                return;
+            }
+            int built = 0;
+            while (built < BUILD_BATCH_SIZE && !pendingBuildTasks.isEmpty()) {
+                pendingBuildTasks.pollFirst().run();// 执行构建任务
+                built++;// 计数已构建的任务数量
+            }
+            if (pendingBuildTasks.isEmpty()) {
+                buildTimeline.stop();// 如果所有构建任务完成，停止构建管道
+            }
+        }));
+        buildTimeline.setCycleCount(Animation.INDEFINITE);// 设置为无限循环，直到手动停止
+        buildTimeline.play();// 启动构建管道
+    }
+
+    private void ensureRenderPump(long loadToken, File dir) {// 确保渲染管道正在运行
+        if (renderTimeline != null && renderTimeline.getStatus() == Animation.Status.RUNNING) {
+            return;
+        }
+        renderTimeline = new Timeline(new KeyFrame(Duration.millis(16), event -> {
+            if (isStaleLoad(loadToken, dir)) {
+                stopProgressivePipelines();// 如果加载过时，停止所有渐进式管道并清空任务队列
+                return;
+            }
+            int rendered = 0;
+            while (rendered < RENDER_BATCH_SIZE && !pendingRenderTasks.isEmpty()) {// 分批渲染VBox到FlowPane
+                CardRenderTask task = pendingRenderTasks.pollFirst();// 获取下一个渲染任务
+                if (task != null && task.index < imageFlowPane.getChildren().size()) {
+                    imageFlowPane.getChildren().set(task.index, task.card);// 将构建好的VBox放到对应的索引位置
+                    FlowPane.setMargin(task.card, CARD_MARGIN);// 设置卡片间距
+                }
+                rendered++;
+            }
+            if (pendingRenderTasks.isEmpty()) {
+                renderTimeline.stop();// 如果所有渲染任务完成，停止渲染管道
+            }
+        }));
+        renderTimeline.setCycleCount(Animation.INDEFINITE);// 设置为无限循环，直到手动停止
+        renderTimeline.play();// 启动渲染管道
+    }
+
+    private void stopProgressivePipelines() {// 停止所有渐进式管道并清空任务队列
+        if (buildTimeline != null) {
+            buildTimeline.stop();// 停止构建管道
+            buildTimeline = null;
+        }
+        if (renderTimeline != null) {
+            renderTimeline.stop();
+            renderTimeline = null;
+        }
+        pendingBuildTasks.clear();// 清空待构建任务队列
+        pendingRenderTasks.clear();// 清空待渲染任务队列
     }
 
     private void setupVBoxContextMenu(VBox vBox) {//设置VBox的右键菜单逻辑
@@ -376,11 +472,7 @@ public class MainController {
                 NORMAL_STYLE,
                 SELECTED_STYLE,
                 this::updateTipLabel,
-                () -> {
-                    currentDir = file;
-                    loadImagesToFlowPane(file);
-                    directoryTreeService.expandAndSelectInTree(file.getAbsolutePath());
-                }
+                () -> navigateToDirectory(file, true)
         );
     }
 
@@ -431,8 +523,7 @@ public class MainController {
                 imageFlowPane,
                 this::updateTipLabel,
                 () -> {
-                    currentDir = targetDir;
-                    loadImagesToFlowPane(targetDir);
+                    navigateToDirectory(targetDir, false);
                     if (dirTreeView.getRoot() != null) {
                         directoryTreeService.expandAndSelectInTree(targetDir.getAbsolutePath());
                     }
@@ -478,10 +569,10 @@ public class MainController {
             File parent = currentDir.getParentFile();
             if (parent != null) {
                 dirHistoryStack.push(currentDir); // 将当前目录压入历史栈
-                currentDir = parent;
-                loadImagesToFlowPane(currentDir);
-                directoryTreeService.expandAndSelectInTree(currentDir.getAbsolutePath());
+                navigateToDirectory(parent, true);
             } else {
+                activeLoadToken++; // 使旧的异步加载结果失效
+                stopProgressivePipelines();
                 currentDir = null;
                 allFiles.clear();
                 selectedVBoxes.clear();
@@ -502,9 +593,7 @@ public class MainController {
     @FXML
     public void onUndo() {// 撤销返回操作
         if (!dirHistoryStack.isEmpty()) {
-            currentDir = dirHistoryStack.pop();
-            loadImagesToFlowPane(currentDir);
-            directoryTreeService.expandAndSelectInTree(currentDir.getAbsolutePath());
+            navigateToDirectory(dirHistoryStack.pop(), true);
         } else {
             showAlert(Alert.AlertType.INFORMATION, "提示", "无可撤销的操作");
         }
@@ -660,7 +749,7 @@ public class MainController {
         });
     }
 
-    private void recalculateDirectoryStats() {
+    private void recalculateDirectoryStats() {// 重新计算当前目录的图片数量和总大小
         long imageCount = 0;
         long totalSize = 0;
         for (File file : allFiles) {
@@ -674,15 +763,26 @@ public class MainController {
                 }
             }
         }
-        cachedImageCount = imageCount;
-        cachedTotalSize = totalSize;
+        cachedImageCount = imageCount;// 更新图片数量缓存
+        cachedTotalSize = totalSize;// 更新总大小缓存
     }
 
     private void showAlert(Alert.AlertType type, String title, String content) {
         AlterUtil.showAlert(type, title, content, dirTreeView.getScene().getWindow()); // 弹窗提示
     }
 
+    private static class CardRenderTask {
+        private final int index;// VBox在FlowPane中的索引位置
+        private final VBox card;// 已经构建好的VBox卡片，准备渲染到界面
+
+        private CardRenderTask(int index, VBox card) {
+            this.index = index;
+            this.card = card;
+        }
+    }
+
     public void shutdown() {
+        stopProgressivePipelines();
         if (directoryTreeService != null) {
             directoryTreeService.shutdown(); // 关闭目录树相关线程池
         }
