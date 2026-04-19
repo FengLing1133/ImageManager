@@ -38,7 +38,7 @@ public class VBoxFactory {
         if (file.isDirectory()) {
             imageView = new ImageView();
             try {
-                var stream = getClass().getResourceAsStream("/icons/folder-icon.png");
+                var stream = getClass().getResourceAsStream("/icons/folder.png");
                 if (stream != null) {
                     imageView = new ImageView(new Image(stream));
                 }
@@ -48,7 +48,7 @@ public class VBoxFactory {
         } else {
             imageView = new ImageView();
             try {
-                var stream = getClass().getResourceAsStream("/icons/file-icon.png");
+                var stream = getClass().getResourceAsStream("/icons/file.png");
                 if (stream != null) {
                     imageView = new ImageView(new Image(stream));
                 }
@@ -269,7 +269,7 @@ public class VBoxFactory {
     ) {
         ImageView imageView = new ImageView();
         try {
-            var stream = getClass().getResourceAsStream("/icons/folder-icon.png");
+            var stream = getClass().getResourceAsStream("/icons/folder.png");
             if (stream != null) {
                 imageView = new ImageView(new Image(stream));
             }

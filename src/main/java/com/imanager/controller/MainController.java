@@ -75,10 +75,47 @@ public class MainController {
         initFlowPaneHint();
         //初始化目录树(加载本地文件系统)
         directoryTreeService.initDirectoryTree();
-            imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+
+        dirTreeView.setCellFactory(tv -> new javafx.scene.control.TreeCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(item);
+                    javafx.scene.image.ImageView iconView = null;
+                    if (getTreeItem().getParent() == null || "我的电脑".equals(item)) {
+                        // 根节点不显示图标或用电脑图标
+                        setGraphic(null);
+                    } else if (item.matches("^[A-Z]:\\\\$")) {
+                        // 盘符
+                        iconView = new javafx.scene.image.ImageView(
+                                getClass().getResource("/icons/hard-drive.png").toExternalForm());
+                    } else if (getTreeItem().isLeaf()) {
+                        // 叶子节点（可选：文件夹/文件）
+                        iconView = new javafx.scene.image.ImageView(
+                                getClass().getResource("/icons/folder.png").toExternalForm());
+                    } else {
+                        // 文件夹
+                        iconView = new javafx.scene.image.ImageView(
+                                getClass().getResource("/icons/folder.png").toExternalForm());
+                    }
+                    if (iconView != null) {
+                        iconView.setFitWidth(18);
+                        iconView.setFitHeight(18);
+                        setGraphic(iconView);
+                    }
+                }
+            }
+        });
+
+
+        imageScrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
                 imageFlowPane.setPrefWidth(newBounds.getWidth());
                 //imageFlowPane.setPrefHeight(newBounds.getHeight());
-         });
+        });
 
         // 让AnchorPane铺满ScrollPane可视区域，保证空白区可右键
         imageScrollPane.viewportBoundsProperty().addListener((obs, oldVal, newVal) -> {
