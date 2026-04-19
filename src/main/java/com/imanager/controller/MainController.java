@@ -27,6 +27,8 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 public class MainController {
+    private static final Insets CARD_MARGIN = new Insets(5);
+    private static final int HOVER_EFFECT_THRESHOLD = 500;
 
     @FXML
     private TreeView<String> dirTreeView;
@@ -63,6 +65,8 @@ public class MainController {
     private final Stack<File> dirHistoryStack = new Stack<>(); // 目录历史栈
     private final List<File> allFiles = new ArrayList<>(); // 当前目录下所有文件
     private static final int THUMB_SIZE = 120; // 缩略图尺寸
+    private long cachedImageCount = 0;
+    private long cachedTotalSize = 0;
 
     @FXML
     public void initialize() {
@@ -263,6 +267,8 @@ public class MainController {
                 Platform.runLater(() -> {
                     if (currentDir != dir) return;
                     emptyTipLabel.setVisible(true);// 显示空目录提示
+                    cachedImageCount = 0;
+                    cachedTotalSize = 0;
                     updateTipLabel();
                 });
                 return;
@@ -276,27 +282,46 @@ public class MainController {
 
             List<File> imageFiles = new ArrayList<>();
             List<File> nonImageFiles = new ArrayList<>();
+            long imageCount = 0;
+            long totalSize = 0;
             for (File file : files) {
-                if (!file.isDirectory() && fileService.isImageFile(file)) {
-                    imageFiles.add(file);// 分类图片文件和非图片文件
+                if (file.isFile()) {
+                    totalSize += file.length();
+                }
+                if (!file.isDirectory()) {
+                    boolean imageFile = fileService.isImageFile(file);
+                    if (imageFile) {
+                        imageFiles.add(file);// 分类图片文件和非图片文件
+                        imageCount++;
+                    } else {
+                        nonImageFiles.add(file);
+                    }
                 } else {
                     nonImageFiles.add(file);
                 }
             }
+            final long finalImageCount = imageCount;
+            final long finalTotalSize = totalSize;
+            final boolean enableHoverEffects = files.length <= HOVER_EFFECT_THRESHOLD;
 
             Platform.runLater(() -> {
                 if (currentDir != dir) return; // 如果用户已经切换到其他目录，抛弃当前加载结果
                 emptyTipLabel.setVisible(false);// 显示空目录提示
                 allFiles.addAll(Arrays.asList(files));// 更新当前目录文件列表
+                cachedImageCount = finalImageCount;
+                cachedTotalSize = finalTotalSize;
+                vBoxFactory.setHoverEffectsEnabled(enableHoverEffects);
 
                 Map<File, Integer> fileIndexMap = new HashMap<>();
+                List<VBox> placeholders = new ArrayList<>(files.length);
                 for (int i = 0; i < files.length; i++) {
                     fileIndexMap.put(files[i], i);// 记录文件在FlowPane中的索引位置
                     VBox placeholder = new VBox();
                     placeholder.setPrefSize(130, 150);
                     placeholder.setStyle("-fx-background-color: transparent;");
-                    imageFlowPane.getChildren().add(placeholder);// 先添加占位符，后续加载完成后替换为实际VBox
+                    placeholders.add(placeholder);// 先构建占位符，后续一次性添加
                 }
+                imageFlowPane.getChildren().setAll(placeholders);
 
                 for (File file : nonImageFiles) {
                     createVBoxAsync(file, vBox -> {
@@ -304,7 +329,7 @@ public class MainController {
                         Integer index = fileIndexMap.get(file);// 获取文件对应的索引位置
                         if (index != null && index < imageFlowPane.getChildren().size()) {
                             imageFlowPane.getChildren().set(index, vBox);// 替换占位符为实际VBox
-                            FlowPane.setMargin(vBox, new Insets(5));// 设置VBox之间的间距
+                            FlowPane.setMargin(vBox, CARD_MARGIN);// 设置VBox之间的间距
                         }
                     });
                 }
@@ -315,7 +340,7 @@ public class MainController {
                         Integer index = fileIndexMap.get(imageFile);
                         if (index != null && index < imageFlowPane.getChildren().size()) {
                             imageFlowPane.getChildren().set(index, vBox);
-                            FlowPane.setMargin(vBox, new Insets(5));
+                            FlowPane.setMargin(vBox, CARD_MARGIN);
                         }
                     });
                 }
@@ -355,23 +380,19 @@ public class MainController {
                     currentDir = file;
                     loadImagesToFlowPane(file);
                     directoryTreeService.expandAndSelectInTree(file.getAbsolutePath());
-                },
-                this::deleteSelected,
-                this::copySelected,
-                this::renameSelected,
-                this::pasteFiles
+                }
         );
     }
 
     private void createImageVBoxAsync(File file, Consumer<VBox> callback) { // 异步创建图片VBox
         vBoxFactory.createImageVBoxAsync(
                 file,
-                vBox -> Platform.runLater(() -> {
+                vBox -> {
                     setupVBoxContextMenu(vBox);
                     if (callback != null) {
                         callback.accept(vBox);
                     }
-                }),
+                },
                 imageCache,
                 imageExecutor,
                 THUMB_SIZE,
@@ -380,11 +401,7 @@ public class MainController {
                 selectedVBoxes,
                 vBoxToFile,
                 this::updateTipLabel,
-                () -> openSlideShowForImage(file),
-                this::deleteSelected,
-                this::copySelected,
-                this::renameSelected,
-                this::pasteFiles
+                () -> openSlideShowForImage(file)
         );
     }
 
@@ -473,6 +490,8 @@ public class MainController {
                     imageFlowPane.getChildren().clear();
                     initFlowPaneHint();
                     pathField.setText(""); // 清空路径输入框
+                    cachedImageCount = 0;
+                    cachedTotalSize = 0;
                     updateTipLabel();
                 });
                 dirTreeView.getSelectionModel().clearSelection();// 取消目录树选择状态
@@ -500,9 +519,7 @@ public class MainController {
             tipLabel.setText("Welcome to Image Manager");
             return;
         }
-        long imageCount = allFiles.stream().filter(this::isImageFile).count();// 统计图片数量
-        long totalSize = allFiles.stream().filter(File::isFile).mapToLong(File::length).sum();// 计算总大小
-        String sizeStr = fileService.formatSize(totalSize);// 格式化总大小
+        String sizeStr = fileService.formatSize(cachedTotalSize);// 格式化总大小
         String selectedStr = selectedVBoxes.isEmpty() ? "" : " | 选中: " + selectedVBoxes.size();// 选中数量提示
         long selectedImageSize = selectedVBoxes.stream()
                 .map(vBoxToFile::get)
@@ -511,7 +528,7 @@ public class MainController {
                 .mapToLong(File::length)
                 .sum();
         String selectedSizeStr = (selectedVBoxes.isEmpty() || selectedImageSize == 0) ? "" : " | 选中图片总大小: " + fileService.formatSize(selectedImageSize);
-        tipLabel.setText("目录: " + currentDir.getName() + " | 图片数量: " + imageCount + " | 总大小: " + sizeStr + selectedStr + selectedSizeStr);
+        tipLabel.setText("目录: " + currentDir.getName() + " | 图片数量: " + cachedImageCount + " | 总大小: " + sizeStr + selectedStr + selectedSizeStr);
     }
 
     private void openSlideShowForImage(File imageFile) { // 打开指定图片的幻灯片
@@ -574,6 +591,7 @@ public class MainController {
                         Platform.runLater(() -> {
                             imageFlowPane.getChildren().removeAll(deletedVBoxes);// 从FlowPane移除被删除的VBox
                             selectedVBoxes.removeAll(new HashSet<>(deletedVBoxes));// 从选中集合中移除被删除的VBox
+                            recalculateDirectoryStats();
                             updateTipLabel();
                         })
                 );
@@ -617,6 +635,7 @@ public class MainController {
                     vBoxToFile.put(vBox, newFile);
                     ((Label) vBox.getChildren().get(1)).setText(VBoxFactory.truncateFileName(newNameWithExt));// 更新VBox中文件名标签显示
                     allFiles.set(allFiles.indexOf(file), newFile);// 更新当前目录文件列表中的File对象
+                    recalculateDirectoryStats();
                 } else {
                     showAlert(Alert.AlertType.ERROR, "重命名失败", "无法重命名文件");
                 }
@@ -639,6 +658,24 @@ public class MainController {
             });
             updateTipLabel();
         });
+    }
+
+    private void recalculateDirectoryStats() {
+        long imageCount = 0;
+        long totalSize = 0;
+        for (File file : allFiles) {
+            if (file == null || !file.exists()) {
+                continue;
+            }
+            if (file.isFile()) {
+                totalSize += file.length();
+                if (isImageFile(file)) {
+                    imageCount++;
+                }
+            }
+        }
+        cachedImageCount = imageCount;
+        cachedTotalSize = totalSize;
     }
 
     private void showAlert(Alert.AlertType type, String title, String content) {

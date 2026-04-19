@@ -22,6 +22,29 @@ import java.util.function.Consumer;
 
 public class VBoxFactory {
     private static final int FILE_NAME_MAX_LENGTH = 18; // 文件名最大显示长度（含省略号）
+    private static final Insets CARD_PADDING = new Insets(5);
+    private static final Image FOLDER_ICON = loadIcon("/icons/folder.png");
+    private static final Image FILE_ICON = loadIcon("/icons/file.png");
+    private volatile boolean hoverEffectsEnabled = true;
+
+    private static Image loadIcon(String path) {
+        try (var stream = VBoxFactory.class.getResourceAsStream(path)) {
+            if (stream != null) {
+                return new Image(stream);
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private ImageView createFileTypeIcon(boolean directory) {
+        Image icon = directory ? FOLDER_ICON : FILE_ICON;
+        return icon == null ? new ImageView() : new ImageView(icon);
+    }
+
+    public void setHoverEffectsEnabled(boolean enabled) {
+        this.hoverEffectsEnabled = enabled;
+    }
 
     // 通用 VBox 创建方法（文件/文件夹/图片）
     private VBox createBaseVBox(ImageView imageView, String name, int width, String normalStyle) {
@@ -35,25 +58,12 @@ public class VBoxFactory {
         nameLabel.setWrapText(true);// 允许换行显示长文件名
         VBox vBox = new VBox(5, imageView, nameLabel);
         vBox.getStyleClass().add("card");
-        vBox.setPadding(new Insets(5));
+        vBox.setPadding(CARD_PADDING);
         vBox.setStyle(normalStyle);
-        setupCardHoverEffect(vBox);
+        if (hoverEffectsEnabled) {
+            setupCardHoverEffect(vBox);
+        }
         return vBox;
-    }
-
-    // 通用右键菜单生成
-    private ContextMenu buildBaseContextMenu(Runnable onDelete, Runnable onCopy, Runnable onRename, Runnable onPaste) {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem deleteItem = new MenuItem("删除");
-        deleteItem.setOnAction(e -> { if (onDelete != null) onDelete.run(); });
-        MenuItem copyItem = new MenuItem("复制");
-        copyItem.setOnAction(e -> { if (onCopy != null) onCopy.run(); });
-        MenuItem renameItem = new MenuItem("重命名");
-        renameItem.setOnAction(e -> { if (onRename != null) onRename.run(); });
-        MenuItem pasteItem = new MenuItem("粘贴");
-        pasteItem.setOnAction(e -> { if (onPaste != null) onPaste.run(); });
-        contextMenu.getItems().addAll(deleteItem, copyItem, renameItem, pasteItem); // 只添加一次
-        return contextMenu;
     }
 
     //异步创建VBox（图标+名称+点击事件）
@@ -65,39 +75,10 @@ public class VBoxFactory {
             String normalStyle,
             String selectedStyle,
             Runnable updateTipLabel,
-            Runnable onDoubleClickDir,
-            Runnable onDelete,
-            Runnable onCopy,
-            Runnable onRename,
-            Runnable onPaste
+            Runnable onDoubleClickDir
     ) {
-        ImageView imageView;
-        if (file.isDirectory()) {
-            imageView = new ImageView();
-            try {
-                var stream = getClass().getResourceAsStream("/icons/folder.png");
-                if (stream != null) {
-                    imageView = new ImageView(new Image(stream));
-                }
-            } catch (Exception e) {
-                imageView = new ImageView();
-            }
-        } else {
-            imageView = new ImageView();
-            try {
-                var stream = getClass().getResourceAsStream("/icons/file.png");
-                if (stream != null) {
-                    imageView = new ImageView(new Image(stream));
-                }
-            } catch (Exception e) {
-                imageView = new ImageView();
-            }
-        }
+        ImageView imageView = createFileTypeIcon(file.isDirectory());
         VBox vBox = createBaseVBox(imageView, file.getName(), 120, normalStyle);
-        vBox.setOnContextMenuRequested(event -> {
-            ContextMenu contextMenu = buildBaseContextMenu( onDelete, onCopy, onRename, onPaste);
-            contextMenu.show(vBox, event.getScreenX(), event.getScreenY());
-        });
         setupFileVBoxSelection(vBox, normalStyle, selectedStyle, selectedVBoxes, updateTipLabel);
         vBox.setOnMouseClicked(event -> {
             if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2 && file.isDirectory()) {
@@ -120,15 +101,11 @@ public class VBoxFactory {
             Set<VBox> selectedVBoxes,
             Map<VBox, File> vBoxToFile,
             Runnable updateTipLabel,
-            Runnable onDoubleClickImage,
-            Runnable onDelete,
-            Runnable onCopy,
-            Runnable onRename,
-            Runnable onPaste
+            Runnable onDoubleClickImage
     ) {
         ImageView imageView = new ImageView(image);
         VBox vBox = createBaseVBox(imageView, file.getName(), thumbSize, normalStyle);
-        setupImageVBox(vBox, normalStyle, selectedStyle, selectedVBoxes, updateTipLabel, onDoubleClickImage, onDelete, onCopy, onRename, onPaste);
+        setupImageVBox(vBox, normalStyle, selectedStyle, selectedVBoxes, updateTipLabel, onDoubleClickImage);
         vBoxToFile.put(vBox, file);
         callback.accept(vBox);
     }
@@ -145,23 +122,19 @@ public class VBoxFactory {
             Set<VBox> selectedVBoxes,
             Map<VBox, File> vBoxToFile,
             Runnable updateTipLabel,
-            Runnable onDoubleClickImage,
-            Runnable onDelete,
-            Runnable onCopy,
-            Runnable onRename,
-            Runnable onPaste
+            Runnable onDoubleClickImage
     ) {
         String filePath = file.getAbsolutePath(); // 路径
         if (imageCache.containsKey(filePath)) {
             Image image = imageCache.get(filePath); // 缓存命中
-            createImageVBox(file, image, callback, thumbSize, normalStyle, selectedStyle, selectedVBoxes, vBoxToFile, updateTipLabel, onDoubleClickImage, onDelete, onCopy, onRename, onPaste);
+            createImageVBox(file, image, callback, thumbSize, normalStyle, selectedStyle, selectedVBoxes, vBoxToFile, updateTipLabel, onDoubleClickImage);
             return;
         }
         imageExecutor.submit(() -> { // 异步加载图片
             try {
                 Image img = new Image(file.toURI().toString(), thumbSize, thumbSize, true, true, false); // 加载缩略图
                 imageCache.put(filePath, img);// 加入缓存
-                Platform.runLater(() -> createImageVBox(file, img, callback, thumbSize, normalStyle, selectedStyle, selectedVBoxes, vBoxToFile, updateTipLabel, onDoubleClickImage, onDelete, onCopy, onRename, onPaste));
+                Platform.runLater(() -> createImageVBox(file, img, callback, thumbSize, normalStyle, selectedStyle, selectedVBoxes, vBoxToFile, updateTipLabel, onDoubleClickImage));
             } catch (Exception e) {
                 System.out.println("⚠️ 图片加载失败：" + file.getName());
             }
@@ -175,19 +148,8 @@ public class VBoxFactory {
             String selectedStyle,
             Set<VBox> selectedVBoxes,
             Runnable updateTipLabel,
-            Runnable onDoubleClickImage,
-            Runnable onDelete,
-            Runnable onCopy,
-            Runnable onRename,
-            Runnable onPaste
+            Runnable onDoubleClickImage
     ) {
-        ContextMenu contextMenu = buildBaseContextMenu(onDelete, onCopy, onRename, onPaste);
-        vBox.setOnContextMenuRequested(event -> {
-            // 只弹出菜单，不做选中处理，选中逻辑全部放在setOnMousePressed
-            contextMenu.show(vBox, event.getScreenX(), event.getScreenY());
-            event.consume();
-        });
-
         // 图片卡片双击打开幻灯片（使用事件过滤避免被选中逻辑吞掉）
         vBox.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
             if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
@@ -312,15 +274,7 @@ public class VBoxFactory {
             Runnable updateTipLabel,
             Runnable onDoubleClickDir
     ) {
-        ImageView imageView = new ImageView();
-        try {
-            var stream = getClass().getResourceAsStream("/icons/folder.png");
-            if (stream != null) {
-                imageView = new ImageView(new Image(stream));
-            }
-        } catch (Exception e) {
-            imageView = new ImageView();
-        }
+        ImageView imageView = createFileTypeIcon(true);
         VBox vBox = createBaseVBox(imageView, displayName, thumbSize, normalStyle);
         (vBox.getChildren().get(1)).setStyle("-fx-font-size: 12px; -fx-alignment: center; -fx-text-alignment: center; -fx-font-weight: bold;");
         vBox.setOnMouseClicked(event -> {
