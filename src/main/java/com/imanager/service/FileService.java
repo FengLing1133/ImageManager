@@ -1,15 +1,12 @@
 package com.imanager.service;
 
 import javafx.scene.layout.VBox;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.function.Consumer;
 
 public class FileService {
-
-    // 仅保留文件操作相关方法，不持有UI状态和控件
 
     // 判断是否为图片文件
     public boolean isImageFile(File file) {
@@ -31,7 +28,7 @@ public class FileService {
                 allFiles.remove(file);
             }
         }
-        if (onFilesDeleted != null) onFilesDeleted.accept(toRemove);
+        if (onFilesDeleted != null) onFilesDeleted.accept(toRemove);// 通知Controller更新UI
     }
 
     // 复制选中文件
@@ -45,7 +42,7 @@ public class FileService {
         }
     }
 
-    // 重命名操作建议由Controller实现，FileService只提供重命名逻辑
+    // 重命名操作由Controller实现，FileService只提供重命名逻辑
     public boolean renameFile(File file, String newNameWithExt) {
         File newFile = new File(file.getParent(), newNameWithExt);
         return file.renameTo(newFile);
@@ -60,12 +57,12 @@ public class FileService {
                 File dest = new File(currentDir, src.getName());
                 if (dest.exists()) {
                     String name = src.getName();
-                    int dotIndex = name.lastIndexOf('.');
+                    int dotIndex = name.lastIndexOf('.');// 分离文件名和扩展名
                     String base = dotIndex > 0 ? name.substring(0, dotIndex) : name;
                     String ext = dotIndex > 0 ? name.substring(dotIndex) : "";
                     int count = 1;
                     while (dest.exists()) {
-                        dest = new File(currentDir, base + "(" + count + ")" + ext);
+                        dest = new File(currentDir, base + "(" + count + ")" + ext);// 如果文件已存在，添加数字后缀
                         count++;
                     }
                 }
