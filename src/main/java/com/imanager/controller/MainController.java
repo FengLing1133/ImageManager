@@ -76,8 +76,8 @@ public class MainController {
     private static final Insets CARD_MARGIN = new Insets(5);// 卡片间距
     private static final int HOVER_EFFECT_THRESHOLD = 500;// 启用悬停效果的文件数量阈值，超过后禁用以提升性能
     private static final int PROGRESSIVE_RENDER_THRESHOLD = 600;// 启用渐进式渲染的文件数量阈值，超过后分批构建和渲染以避免界面冻结
-    private static final int BUILD_BATCH_SIZE = 24;// 每批构建的VBox数量，过多可能导致界面卡顿，过少则加载过慢
-    private static final int RENDER_BATCH_SIZE = 32;// 每批渲染的VBox数量，过多可能导致界面卡顿，过少则加载过慢
+    private static final int BUILD_BATCH_SIZE = 50;// 每批构建的VBox数量，过多可能导致界面卡顿，过少则加载过慢
+    private static final int RENDER_BATCH_SIZE = 50;// 每批渲染的VBox数量，过多可能导致界面卡顿，过少则加载过慢
 
     @FXML
     public void initialize() {
@@ -320,8 +320,8 @@ public class MainController {
             }
             final long finalImageCount = imageCount;
             final long finalTotalSize = totalSize;
-            final boolean enableHoverEffects = files.length <= HOVER_EFFECT_THRESHOLD;
-            final boolean progressiveRender = files.length >= PROGRESSIVE_RENDER_THRESHOLD;
+            final boolean enableHoverEffects = files.length <= HOVER_EFFECT_THRESHOLD;// 根据文件数量决定是否启用悬停效果
+            final boolean progressiveRender = files.length >= PROGRESSIVE_RENDER_THRESHOLD;// 根据文件数量决定是否启用渐进式渲染
 
             Platform.runLater(() -> {
                 if (isStaleLoad(loadToken, dir)) return; // 如果用户已经切换到其他目录，抛弃当前加载结果
@@ -346,25 +346,25 @@ public class MainController {
                     pendingBuildTasks.addLast(() -> createVBoxAsync(file, vBox -> {
                         Integer index = fileIndexMap.get(file);// 获取文件对应的索引位置
                         if (index != null) {
-                            enqueueRenderTask(loadToken, dir, index, vBox);
+                            enqueueRenderTask(loadToken, dir, index, vBox);// 构建完成后添加到渲染队列
                         }
                     }));
                 }
 
                 for (File imageFile : imageFiles) {
                     pendingBuildTasks.addLast(() -> createImageVBoxAsync(imageFile, vBox -> {
-                        Integer index = fileIndexMap.get(imageFile);
+                        Integer index = fileIndexMap.get(imageFile);// 获取文件对应的索引位置
                         if (index != null) {
-                            enqueueRenderTask(loadToken, dir, index, vBox);
+                            enqueueRenderTask(loadToken, dir, index, vBox);// 构建完成后添加到渲染队列
                         }
                     }));
                 }
 
-                if (progressiveRender) {
-                    startBuildPump(loadToken, dir);
+                if (progressiveRender) {// 如果文件数量较多，启用渐进式构建和渲染
+                    startBuildPump(loadToken, dir);// 启动构建管道，分批执行构建任务以避免界面冻结
                 } else {
                     while (!pendingBuildTasks.isEmpty() && !isStaleLoad(loadToken, dir)) {
-                        pendingBuildTasks.pollFirst().run();
+                        pendingBuildTasks.pollFirst().run();// 直接执行所有构建任务
                     }
                 }
                 updateTipLabel();
@@ -372,11 +372,11 @@ public class MainController {
         });
     }
 
-    private boolean isStaleLoad(long loadToken, File dir) {
+    private boolean isStaleLoad(long loadToken, File dir) {// 判断加载结果是否过时
         return loadToken != activeLoadToken || !Objects.equals(currentDir, dir);// 验证加载令牌和当前目录是否匹配，防止过时的异步加载结果影响界面
     }
 
-    private void enqueueRenderTask(long loadToken, File dir, int index, VBox vBox) {
+    private void enqueueRenderTask(long loadToken, File dir, int index, VBox vBox) {// 将渲染任务添加到队列，并确保渲染管道正在运行
         if (isStaleLoad(loadToken, dir)) {
             return;
         }
@@ -388,13 +388,13 @@ public class MainController {
         if (buildTimeline != null) {
             buildTimeline.stop();// 如果构建管道已经在运行，先停止它
         }
-        buildTimeline = new Timeline(new KeyFrame(Duration.millis(16), event -> {
+        buildTimeline = new Timeline(new KeyFrame(Duration.millis(16), event -> {// 每16毫秒执行一次，约等于60帧每秒
             if (isStaleLoad(loadToken, dir)) {
                 stopProgressivePipelines();// 如果加载过时，停止所有渐进式管道并清空任务队列
                 return;
             }
             int built = 0;
-            while (built < BUILD_BATCH_SIZE && !pendingBuildTasks.isEmpty()) {
+            while (built < BUILD_BATCH_SIZE && !pendingBuildTasks.isEmpty()) {// 分批构建VBox
                 pendingBuildTasks.pollFirst().run();// 执行构建任务
                 built++;// 计数已构建的任务数量
             }
@@ -407,10 +407,10 @@ public class MainController {
     }
 
     private void ensureRenderPump(long loadToken, File dir) {// 确保渲染管道正在运行
-        if (renderTimeline != null && renderTimeline.getStatus() == Animation.Status.RUNNING) {
+        if (renderTimeline != null && renderTimeline.getStatus() == Animation.Status.RUNNING) {// 如果渲染管道已经在运行，直接返回
             return;
         }
-        renderTimeline = new Timeline(new KeyFrame(Duration.millis(16), event -> {
+        renderTimeline = new Timeline(new KeyFrame(Duration.millis(16), event -> {// 每16毫秒执行一次，约等于60帧每秒
             if (isStaleLoad(loadToken, dir)) {
                 stopProgressivePipelines();// 如果加载过时，停止所有渐进式管道并清空任务队列
                 return;
