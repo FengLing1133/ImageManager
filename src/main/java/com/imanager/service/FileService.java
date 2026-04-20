@@ -82,4 +82,10 @@ public class FileService {
         String pre = "KMGTPE".charAt(exp - 1) + "";
         return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
     }
+
+    public boolean isVisibleFile(File file) {
+        // file.isHidden() 检查隐藏属性，部分系统文件也会被标记为隐藏
+        // 以.开头的文件通常为类Unix系统下的隐藏文件
+        return !file.isHidden() && !file.getName().startsWith(".");
+    }
 }

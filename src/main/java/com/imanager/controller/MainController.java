@@ -292,7 +292,25 @@ public class MainController {
                 return;
             }
 
-            Arrays.sort(files, (f1, f2) -> {
+            // 过滤掉系统/隐藏文件（不可见文件）
+            List<File> visibleFiles = new ArrayList<>();
+            for (File file : files) {
+                if (fileService.isVisibleFile(file)) {// 使用FileService的isVisibleFile方法过滤不可见文件
+                    visibleFiles.add(file);
+                }
+            }
+            if (visibleFiles.isEmpty()) {
+                Platform.runLater(() -> {
+                    if (isStaleLoad(loadToken, dir)) return;
+                    emptyTipLabel.setVisible(true);// 显示空目录提示
+                    cachedImageCount = 0;
+                    cachedTotalSize = 0;
+                    updateTipLabel();
+                });
+                return;
+            }
+
+            visibleFiles.sort((f1, f2) -> {
                 if (f1.isDirectory() && !f2.isDirectory()) return -1;
                 if (!f1.isDirectory() && f2.isDirectory()) return 1;
                 return f1.getName().compareToIgnoreCase(f2.getName());// 目录优先，按名称排序
@@ -302,7 +320,7 @@ public class MainController {
             List<File> nonImageFiles = new ArrayList<>();
             long imageCount = 0;
             long totalSize = 0;
-            for (File file : files) {
+            for (File file : visibleFiles) {
                 if (file.isFile()) {
                     totalSize += file.length();
                 }
@@ -320,21 +338,21 @@ public class MainController {
             }
             final long finalImageCount = imageCount;
             final long finalTotalSize = totalSize;
-            final boolean enableHoverEffects = files.length <= HOVER_EFFECT_THRESHOLD;// 根据文件数量决定是否启用悬停效果
-            final boolean progressiveRender = files.length >= PROGRESSIVE_RENDER_THRESHOLD;// 根据文件数量决定是否启用渐进式渲染
+            final boolean enableHoverEffects = visibleFiles.size() <= HOVER_EFFECT_THRESHOLD;// 根据文件数量决定是否启用悬停效果
+            final boolean progressiveRender = visibleFiles.size() >= PROGRESSIVE_RENDER_THRESHOLD;// 根据文件数量决定是否启用渐进式渲染
 
             Platform.runLater(() -> {
                 if (isStaleLoad(loadToken, dir)) return; // 如果用户已经切换到其他目录，抛弃当前加载结果
                 emptyTipLabel.setVisible(false);// 显示空目录提示
-                allFiles.addAll(Arrays.asList(files));// 更新当前目录文件列表
+                allFiles.addAll(visibleFiles);// 更新当前目录文件列表
                 cachedImageCount = finalImageCount;
                 cachedTotalSize = finalTotalSize;
                 vBoxFactory.setHoverEffectsEnabled(enableHoverEffects);
 
                 Map<File, Integer> fileIndexMap = new HashMap<>();
-                List<VBox> placeholders = new ArrayList<>(files.length);
-                for (int i = 0; i < files.length; i++) {
-                    fileIndexMap.put(files[i], i);// 记录文件在FlowPane中的索引位置
+                List<VBox> placeholders = new ArrayList<>(visibleFiles.size());
+                for (int i = 0; i < visibleFiles.size(); i++) {
+                    fileIndexMap.put(visibleFiles.get(i), i);// 记录文件在FlowPane中的索引位置
                     VBox placeholder = new VBox();
                     placeholder.setPrefSize(130, 150);
                     placeholder.setStyle("-fx-background-color: transparent;");
